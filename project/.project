@@ -24,4 +24,26 @@
 		<nature>org.eclipse.cdt.managedbuilder.core.ScannerConfigNature</nature>
 		<nature>de.innot.avreclipse.core.avrnature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>avr-can-lib</name>
+			<type>2</type>
+			<locationURI>PARENT-1-PROJECT_LOC/dependencies</locationURI>
+		</link>
+		<link>
+			<name>isotp</name>
+			<type>2</type>
+			<location>/home/lorenzo/git/lorenz-onboard/dependencies/isotp-c/src/isotp</location>
+		</link>
+		<link>
+			<name>source</name>
+			<type>2</type>
+			<location>/home/lorenzo/git/lorenz-onboard/dependencies/ff13/source</location>
+		</link>
+		<link>
+			<name>src</name>
+			<type>2</type>
+			<location>/home/lorenzo/git/lorenz-onboard/dependencies/isotp-c/deps/bitfield-c/src</location>
+		</link>
+	</linkedResources>
 </projectDescription>

@@ -1,3 +1,6 @@
 [submodule "deps/avr-can-lib"]
 	path = deps/avr-can-lib
 	url = https://github.com/lmiori92/avr-can-lib.git
+[submodule "deps/isotp-c"]
+	path = deps/isotp-c
+	url = https://github.com/lmiori92/isotp-c.git
