@@ -31,19 +31,14 @@
 			<locationURI>PARENT-1-PROJECT_LOC/dependencies</locationURI>
 		</link>
 		<link>
-			<name>isotp</name>
+			<name>build</name>
 			<type>2</type>
-			<location>/home/lorenzo/git/lorenz-onboard/dependencies/isotp-c/src/isotp</location>
+			<location>/home/lorenzo/git/lorenz-onboard/deps/avr-can-lib/src/build</location>
 		</link>
 		<link>
-			<name>source</name>
+			<name>deps</name>
 			<type>2</type>
-			<location>/home/lorenzo/git/lorenz-onboard/dependencies/ff13/source</location>
-		</link>
-		<link>
-			<name>src</name>
-			<type>2</type>
-			<location>/home/lorenzo/git/lorenz-onboard/dependencies/isotp-c/deps/bitfield-c/src</location>
+			<location>/home/lorenzo/git/lorenz-onboard/deps</location>
 		</link>
 	</linkedResources>
 </projectDescription>
