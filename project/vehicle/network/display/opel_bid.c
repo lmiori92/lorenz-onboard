@@ -143,6 +143,9 @@ void display_encode(uint8_t *data, uint16_t len, const t_display_command *cmd)
                 }
             }
         }
+
+#warning "this should be removed"
+        *data++ = 0x01; // wtf??
     }
 }
 
@@ -155,11 +158,11 @@ uint16_t display_message(uint8_t *buffer, uint16_t len, uint8_t *message, uint8_
     /* set the number of characters to be sent */
     cmd.components[0].num_utf16_chars = message_len;
     cmd.components[0].data = message;
-    cmd.components[0].command = 0x10;
-    cmd.len = 6;
-    cmd.len += cmd.components[0].num_utf16_chars;
+    cmd.components[0].command = 0xB0;
+    cmd.len = 3;
+    cmd.len += 2 * cmd.components[0].num_utf16_chars;
 
     display_encode(buffer, len, &cmd);
 
-    return 2 + cmd.len;
+    return 3 + cmd.len;
 }

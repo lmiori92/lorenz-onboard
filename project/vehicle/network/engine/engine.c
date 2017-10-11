@@ -25,30 +25,20 @@
 
 */
 
-#include "logger.h"
-#include "uart.h"
+#include "engine.h"
 
-static char buffer[100];
-static char logger_buffer[100];
-
-void logger(char* message)
+uint16_t engine_rpm(uint8_t *data)
 {
-    snprintf(logger_buffer, sizeof(logger_buffer), "[%ld] %s\r\n", milliseconds_since_boot, message);
-    uart_putstring(logger_buffer);
+    uint16_t retval = data[3];
+    retval |= (uint16_t)(data[2] << 8);
+    /* 0.250 factor, aka divide by 4, aka shift left 2 times */
+    return (uint16_t)retval >> 2;
 }
 
-// optional, provide to receive debugging log messages
-void loggerf(const char* format, ...)
+int8_t  engine_coolant(uint8_t *data)
 {
-    va_list va;
-    va_start(va, format);
-    vsnprintf(buffer, sizeof(buffer), format, va);
-    va_end(va);
-    logger(buffer);
-}
-
-void crashed(void)
-{
-    logger("crashed. halting the CPU.");
-    while (1);
+    int8_t retval;
+    /* -40°C offset */
+    retval = data[2] - 40U;
+    return retval;
 }

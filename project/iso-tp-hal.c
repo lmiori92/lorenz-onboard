@@ -39,10 +39,13 @@
  * @param size
  * @return
  */
+#include "mcp2515_defs.h"
+#include "mcp2515_private.h"
 bool send_can(const uint32_t arbitration_id, const uint8_t* data,
         const uint8_t size)
 {
     can_t message;
+
     message.flags.rtr = 0;
     message.flags.extended = 0;
     message.id = arbitration_id;
@@ -55,7 +58,19 @@ bool send_can(const uint32_t arbitration_id, const uint8_t* data,
     message.data[5] = data[5];
     message.data[6] = data[6];
     message.data[7] = data[7];
+
+    uint8_t status;
+    do
+    {
+        /* terminate only when *every* buffer is available
+         * otherwise messages can be sent out of order */
+        status = mcp2515_read_status(SPI_READ_STATUS);
+    } while ((status & 0x54) != 0);
+
     can_send_message(&message);
+
+    _delay_ms(5);   /* the delay is vital for the BID display! */
+
     return true;
 }
 

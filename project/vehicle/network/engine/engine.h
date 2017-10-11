@@ -25,30 +25,12 @@
 
 */
 
-#include "logger.h"
-#include "uart.h"
+#ifndef VEHICLE_NETWORK_ENGINE_ENGINE_H_
+#define VEHICLE_NETWORK_ENGINE_ENGINE_H_
 
-static char buffer[100];
-static char logger_buffer[100];
+#include <stdint.h>
 
-void logger(char* message)
-{
-    snprintf(logger_buffer, sizeof(logger_buffer), "[%ld] %s\r\n", milliseconds_since_boot, message);
-    uart_putstring(logger_buffer);
-}
+uint16_t engine_rpm(uint8_t *data);
+int8_t  engine_coolant(uint8_t *data);
 
-// optional, provide to receive debugging log messages
-void loggerf(const char* format, ...)
-{
-    va_list va;
-    va_start(va, format);
-    vsnprintf(buffer, sizeof(buffer), format, va);
-    va_end(va);
-    logger(buffer);
-}
-
-void crashed(void)
-{
-    logger("crashed. halting the CPU.");
-    while (1);
-}
+#endif /* VEHICLE_NETWORK_ENGINE_CHASSIS_H_ */
