@@ -4,3 +4,15 @@
 [submodule "deps/isotp-c"]
 	path = deps/isotp-c
 	url = https://github.com/lmiori92/isotp-c.git
+[submodule "deps/megnu"]
+	path = deps/megnu
+	url = https://github.com/lmiori92/megnu.git
+[submodule "deps/deasplay"]
+	path = deps/deasplay
+	url = https://github.com/lmiori92/deasplay.git
+[submodule "deps/lorenzlib"]
+	path = deps/lorenzlib
+	url = https://github.com/lmiori92/lorenzlib.git
+[submodule "deps/keypad"]
+	path = deps/keypad
+	url = https://github.com/lmiori92/keypad.git

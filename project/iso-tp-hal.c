@@ -25,12 +25,26 @@
 
 */
 
+/* Driver includes */
+#include "mcp2515_defs.h"
+#include "mcp2515_private.h"
+
 /* Network layer includes */
 #include "can.h"
 
 /* Protocol layer includes */
 #include "isotp/isotp.h"
 #include "iso-tp-hal.h"
+
+/* Application includes */
+#include "logger.h"
+
+IsoTpShims shims =
+{
+        loggerf,
+        send_can,
+        set_timer
+};
 
 /**
  * iso-tp library CAN-Write routine
@@ -39,8 +53,6 @@
  * @param size
  * @return
  */
-#include "mcp2515_defs.h"
-#include "mcp2515_private.h"
 bool send_can(const uint32_t arbitration_id, const uint8_t* data,
         const uint8_t size)
 {

@@ -37,6 +37,7 @@ typedef struct
     uint8_t  *data;
 } t_display_component;
 
+#define DISPLAY_PROTOCOL_CAN_ID     (0x6C1U)
 #define DISPLAY_MAX_COMPONENTS      (5)
 
 typedef struct

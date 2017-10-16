@@ -31,6 +31,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+extern IsoTpShims shims;
+
 bool send_can(const uint32_t arbitration_id, const uint8_t* data,
         const uint8_t size);
 bool set_timer(uint16_t time_ms, void (*callback));

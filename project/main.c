@@ -25,10 +25,12 @@
 
 */
 
-#include <avr/delay.h>
+#include <util/delay.h>
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
+#include <ctype.h>
+#include <string.h>
 #include <stdio.h>
 #include <stddef.h>
 
@@ -44,15 +46,32 @@
 #include "vehicle/network/display/opel_bid.h"
 #include "vehicle/network/radio/opel_cd30.h"
 #include "vehicle/network/engine/chassis.h"
+#include "vehicle/network/engine/engine.h"
 
 /* Application includes */
+#include "gui.h"
+#include "deasplay.h"
+#include "megnu/menu.h"
 #include "logger.h"
+#include "keypad/keypad.h"
 
 uint32_t milliseconds_since_boot = 0;
 
 /** iso-tp buffer */
 uint8_t isotp_receive_buffer[OUR_MAX_ISO_TP_MESSAGE_SIZE];
-uint8_t isotp_send_buffer[OUR_MAX_ISO_TP_MESSAGE_SIZE];
+//uint8_t isotp_send_buffer[OUR_MAX_ISO_TP_MESSAGE_SIZE];
+
+typedef struct
+{
+    int8_t eng_coolant;
+    uint16_t eng_speed;
+    e_key_state key_state;
+    e_button_name btn_state;
+} t_input;
+
+t_input input = { 0, 0, KEY_NA, BTN_ERROR };
+
+
 
 ISR(TIMER0_COMPA_vect)
 {
@@ -128,11 +147,6 @@ const uint8_t can_filter[] PROGMEM =
 };
 // You can receive 11 bit identifiers with either group 0 or 1.
 
-e_key_state key_state = KEY_NA;
-e_button_name btn_state = BTN_ERROR;
-
-
-
 // Optional: This is your callback for when a complete ISO-TP message is
 // received at the arbitration ID you specify. The completed message is
 // also returned by isotp_continue_receive, which can sometimes be more
@@ -196,7 +210,11 @@ int main(void)
 
     sei();
 
+    /* initializing components */
     uart_init();
+    keypad_init();
+    display_init();
+    app_gui_init();
 
     logger("starting lorenz-onboard");
     logger("Opel Astra H MS-CAN");
@@ -205,69 +223,30 @@ int main(void)
     logger("initializing canbus");
     do
     {
+        /* it can happen that we have a failure at boot.
+         * Retry indefinitely: the application won't run without a CANbus network! */
         ok = can_init(BITRATE_95_238_KBPS);
     }
     while(ok == false);
     logger("initialized canbus");
 
-    // Load filters and masks
+    /* load filters and masks */
     can_static_filter(can_filter);
-
-    IsoTpShims shims = isotp_init_shims(loggerf, send_can, set_timer);
-
-    void message_sent(const IsoTpMessage* message, const bool success) {
-       // You received the message! Do something with it.
-    }
-
-    uint8_t test_message[] = "\x00A\x00U\x00X";
-    uint16_t sz = display_message(isotp_send_buffer, sizeof(isotp_send_buffer), test_message, 3);
-
-    IsoTpSendHandle handle = isotp_send(&shims, 0x100, isotp_send_buffer, sz, message_sent);
-
-    if(handle.completed) {
-        if(!handle.success) {
-            // something happened and it already failed - possibly we aren't able to
-            // send CAN messages
-
-        } else {
-            // If the message fit in a single frame, it's already been sent
-            // and you're done
-        }
-    } else {
-        while(true) {
-            // Continue to read from CAN, passing off each message to the handle
-            // this will return true when the message is completely sent (which
-            // may take more than one call if it was multi frame and we're waiting
-            // on flow control responses from the receiver)
-            bool complete = isotp_continue_send(&shims, &handle, 0x100, isotp_send_buffer, sz);
-
-            if(complete && handle.completed) {
-                if(handle.success) {
-                    // All frames of the message have now been sent, following
-                    // whatever flow control feedback it got from the receiver
-                    break;
-                } else {
-                    // the message was unable to be sent and we bailed - fatal
-                    // error!
-                    break;
-                }
-            }
-        }
-    }
 
     while (1)
     {
 
+        // test code !
     IsoTpReceiveHandle handlercv = isotp_receive(&shims, 0x6C1, message_received);
     isotp_set_receive_buffer(&handlercv, isotp_receive_buffer);
-    logger("reception setup has been completed");
     can_t rcv_msg;
+
     if(handlercv.success) {
         // something happened and it already failed - possibly we aren't able to
         // send CAN messages
         logger("failure from start");
     } else {
-        while(true) {
+        //while(true) {
 
             if (can_check_message())
             {
@@ -294,31 +273,110 @@ int main(void)
                     else if (rcv_msg.id == 0x201)
                     {
                         static e_button_name old_btn_state = BTN_ERROR;
-                        btn_state = button_decode(rcv_msg.data, rcv_msg.length);
-                        if (btn_state != old_btn_state)
+                        e_key tmp;
+
+                        input.btn_state = button_decode(rcv_msg.data, rcv_msg.length);
+                        if (input.btn_state != old_btn_state)
                         {
-                            loggerf("button press %d", btn_state);
-                            old_btn_state = btn_state;
+                            loggerf("button press %d", input.btn_state);
+                            old_btn_state = input.btn_state;
                         }
+                        switch(input.btn_state)
+                        {
+                        case BTN_BC:
+                            tmp = KEYPAD_BTN_BC;
+                            break;
+                        case BTN_FM_OR_CD:
+                            tmp = KEYPAD_BTN_FM_OR_CD;
+                            break;
+                        case BTN_LEFT:
+                            tmp = KEYPAD_BTN_LEFT;
+                            break;
+                        case BTN_OK:
+                            tmp = KEYPAD_BTN_OK;
+                            break;
+                        case BTN_RIGHT:
+                            tmp = KEYPAD_BTN_RIGHT;
+                            break;
+                        case BTN_SETTINGS:
+                            tmp = KEYPAD_BTN_SETTINGS;
+                            break;
+                        case BTN_ERROR:
+                        default:
+                            tmp = NUM_BUTTONS;
+                            break;
+                        }
+                        keypad_clicked(tmp);
                     }
                     else if (rcv_msg.id == 0x450)
                     {
                         static e_key_state old_key_state = KEY_NA;
-                        key_state = ignition_decode(rcv_msg.data, rcv_msg.length);
-                        if (key_state != old_key_state)
+                        input.key_state = ignition_decode(rcv_msg.data, rcv_msg.length);
+                        if (input.key_state != old_key_state)
                         {
-                            loggerf("new key position %d", key_state);
-                            old_key_state = key_state;
+                            loggerf("new key position %d", input.key_state);
+                            old_key_state = input.key_state;
                         }
                     }
+                    else if (rcv_msg.id == 0x4EC)
+                    {
+                        input.eng_coolant = engine_coolant(rcv_msg.data);
+                    }
+                    else if (rcv_msg.id == 0x4E8)
+                    {
+                        input.eng_speed = engine_rpm(rcv_msg.data);
+                    }
+
+                    static uint32_t old_time = 0;
+                    if ((uint32_t)(milliseconds_since_boot ) > (uint32_t)(old_time + 250 ))
+                    {
+                        old_time = milliseconds_since_boot;
+//                        loggerf("engrpm  : %d", input.eng_speed);
+//                        loggerf("engcool : %d", input.eng_coolant);
+//                        display_engine();
+                    }
+
                 }
             }
+//        }
+
+        /* this logic shall always be run periodically */
+        static uint32_t old_millis = 0;
+        if (milliseconds_since_boot > (uint32_t)(old_millis + 50))
+        {
+            old_millis = milliseconds_since_boot;
+            keypad_periodic(true);
         }
+        else
+        {
+            keypad_periodic(false);
+        }
+
+        e_key_event evt = keypad_clicked(KEYPAD_BTN_SETTINGS);
+        e_menu_input_event menu_evt = MENU_EVENT_NONE;
+
+        /* MENU */
+
+        /* Input event to Menu event mapping */
+        /* The Left and Right events are handled in the interrupt */
+        if (evt == KEY_CLICK) menu_evt = MENU_EVENT_CLICK;
+        else if (evt == KEY_HOLD) menu_evt = MENU_EVENT_CLICK_LONG;
+
+        if (keypad_clicked(KEYPAD_BTN_LEFT) == KEY_CLICK) menu_evt = MENU_EVENT_LEFT;
+        if (keypad_clicked(KEYPAD_BTN_RIGHT) == KEY_CLICK) menu_evt = MENU_EVENT_RIGHT;
+
+        if (input.btn_state == BTN_LEFT) menu_evt = MENU_EVENT_LEFT;
+        if (input.btn_state == BTN_RIGHT) menu_evt = MENU_EVENT_RIGHT;
+        input.btn_state = BTN_ERROR;
+
+        (void)menu_event(menu_evt);
+
+        /* periodic function for the menu handler */
+        menu_display();
+
+        /* periodic display function */
+        display_periodic();
     }
-
-
-        /* processor's main loop */
-//        can_send_message(&message);
     }
 
     /* shall never get there, reset otherwise */

@@ -28,6 +28,12 @@
 								<option id="de.innot.avreclipse.asm.option.include.paths.630043778" name="#include paths for preprocessor(-I)" superClass="de.innot.avreclipse.asm.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="../../deps/isotp-c/src/isotp"/>
 									<listOptionValue builtIn="false" value="../../deps/isotp-c/deps/bitfield-c/src"/>
+									<listOptionValue builtIn="false" value="../../deps/megnu"/>
+									<listOptionValue builtIn="false" value="../../deps/deasplay"/>
+									<listOptionValue builtIn="false" value="../../deps/lorenzlib"/>
+									<listOptionValue builtIn="false" value="../../deps/taxibus"/>
+									<listOptionValue builtIn="false" value="../../deps"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lorenz-onboard}&quot;"/>
 								</option>
 								<option id="de.innot.avreclipse.asm.option.include.gaspaths.2024897567" name=".include paths for assembler(-Wa,-I)" superClass="de.innot.avreclipse.asm.option.include.gaspaths"/>
 								<inputType id="de.innot.avreclipse.tool.assembler.input.1853311955" superClass="de.innot.avreclipse.tool.assembler.input"/>
@@ -40,6 +46,12 @@
 									<listOptionValue builtIn="false" value="../../deps/avr-can-lib/src"/>
 									<listOptionValue builtIn="false" value="../../deps/isotp-c/src/"/>
 									<listOptionValue builtIn="false" value="../../deps/isotp-c/deps/bitfield-c/src"/>
+									<listOptionValue builtIn="false" value="../../deps/megnu"/>
+									<listOptionValue builtIn="false" value="../../deps/deasplay"/>
+									<listOptionValue builtIn="false" value="../../deps/lorenzlib"/>
+									<listOptionValue builtIn="false" value="../../deps/taxibus"/>
+									<listOptionValue builtIn="false" value="../../deps"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lorenz-onboard}&quot;"/>
 								</option>
 								<option id="de.innot.avreclipse.compiler.option.std.589123956" name="Language Standard" superClass="de.innot.avreclipse.compiler.option.std" value="de.innot.avreclipse.compiler.option.std.gnu99" valueType="enumerated"/>
 								<option id="de.innot.avreclipse.compiler.option.optimize.datasections.874330823" name="Each data item in its own section (-fdata-sections)" superClass="de.innot.avreclipse.compiler.option.optimize.datasections" value="true" valueType="boolean"/>
@@ -113,6 +125,12 @@
 									<listOptionValue builtIn="false" value="/home/lorenzo/git/lorenz-onboard/dependencies/ff13/source"/>
 									<listOptionValue builtIn="false" value="../../deps/isotp-c/src/isotp"/>
 									<listOptionValue builtIn="false" value="../../deps/isotp-c/deps/bitfield-c/src"/>
+									<listOptionValue builtIn="false" value="../../deps/megnu"/>
+									<listOptionValue builtIn="false" value="../../deps/deasplay"/>
+									<listOptionValue builtIn="false" value="../../deps/lorenzlib"/>
+									<listOptionValue builtIn="false" value="../../deps/taxibus"/>
+									<listOptionValue builtIn="false" value="../../deps"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lorenz-onboard}&quot;"/>
 								</option>
 								<inputType id="de.innot.avreclipse.tool.assembler.input.1885782377" superClass="de.innot.avreclipse.tool.assembler.input"/>
 							</tool>
@@ -128,6 +146,12 @@
 									<listOptionValue builtIn="false" value="/home/lorenzo/git/lorenz-onboard/dependencies/ff13/source"/>
 									<listOptionValue builtIn="false" value="../../deps/isotp-c/src/isotp"/>
 									<listOptionValue builtIn="false" value="../../deps/isotp-c/deps/bitfield-c/src"/>
+									<listOptionValue builtIn="false" value="../../deps/megnu"/>
+									<listOptionValue builtIn="false" value="../../deps/deasplay"/>
+									<listOptionValue builtIn="false" value="../../deps/lorenzlib"/>
+									<listOptionValue builtIn="false" value="../../deps/taxibus"/>
+									<listOptionValue builtIn="false" value="../../deps"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/lorenz-onboard}&quot;"/>
 								</option>
 								<option id="de.innot.avreclipse.compiler.option.def.990271040" name="Define Syms (-D)" superClass="de.innot.avreclipse.compiler.option.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="MCU=atmega328p"/>
