@@ -1,6 +1,8 @@
 # lorenz-onboard
 Aftermarket board information system which integrates to the car's network displays and sensors
 
+![GitHub Logo](https://github.com/lmiori92/lorenz-onboard/blob/master/doc/images/prototype.jpg)
+
 # Basic Design
 The Raspberry pi's box contains everything that is required to power the microcontroller and interface it to the car's CANbus.
 
@@ -26,8 +28,3 @@ This is done by sending dummy ECN (Engine Control Unit) Diagnostic Trouble Codes
 
 # Inputs
 The CD-30 radio streams button presses to the MS-CAN bus. They can be captured to build a nice user interface. The protocol between the display and the radio has been partially understood e.g. to display radio input.
-
-# The case and the electronics
-
-
-[[https://github.com/lmiori92/lorenz-onboard/blob/master/doc/images/prototype.jpg|alt=design-proto]]
