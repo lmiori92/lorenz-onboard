@@ -38,7 +38,8 @@ typedef enum
     BTN_LEFT,
     BTN_RIGHT,
     BTN_FM_OR_CD,
-    BTN_SETTINGS
+    BTN_SETTINGS,
+    BTN_RELEASED
 } e_button_name;
 
 e_button_name button_decode(uint8_t *can_data, uint8_t len);

@@ -145,7 +145,7 @@ void display_encode(uint8_t *data, uint16_t len, const t_display_command *cmd)
         }
 
 #warning "this should be removed"
-        *data++ = 0x01; // wtf??
+//        *data++ = 0x01; // wtf??
     }
 }
 
@@ -154,11 +154,11 @@ uint16_t display_message(uint8_t *buffer, uint16_t len, uint8_t *message, uint8_
     t_display_command cmd = { 0 };
 
     /* set the command for the display */
-    cmd.command = 0x0040;
+    cmd.command = 0x0040; //40 usato per un refresh completo, // c0 invece parziale sembra
     /* set the number of characters to be sent */
     cmd.components[0].num_utf16_chars = message_len;
     cmd.components[0].data = message;
-    cmd.components[0].command = 0xB0;
+    cmd.components[0].command = /*0x10;*/0xB0; // B0 e praticamente come un popup che manda il display in un altro stato
     cmd.len = 3;
     cmd.len += 2 * cmd.components[0].num_utf16_chars;
 

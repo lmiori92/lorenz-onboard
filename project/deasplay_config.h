@@ -36,7 +36,7 @@
 #define DEASPLAY_OPEL_BID
 
 #define DEASPLAY_LINES 1
-#define DEASPLAY_CHARS 16
+#define DEASPLAY_CHARS 14
 
 #if defined(DEASPLAY_HD44780)
 

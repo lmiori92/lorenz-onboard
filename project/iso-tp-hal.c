@@ -43,7 +43,8 @@ IsoTpShims shims =
 {
         loggerf,
         send_can,
-        set_timer
+        set_timer,
+        true
 };
 
 /**
@@ -71,6 +72,8 @@ bool send_can(const uint32_t arbitration_id, const uint8_t* data,
     message.data[6] = data[6];
     message.data[7] = data[7];
 
+#warning "this causes deadlock on bus problems; plus it wastes time; plus does not do what we want actually"
+    // fix the iso-tp layer by adding a configurable delay ? hmm see
     uint8_t status;
     do
     {
@@ -80,8 +83,6 @@ bool send_can(const uint32_t arbitration_id, const uint8_t* data,
     } while ((status & 0x54) != 0);
 
     can_send_message(&message);
-
-    _delay_ms(5);   /* the delay is vital for the BID display! */
 
     return true;
 }

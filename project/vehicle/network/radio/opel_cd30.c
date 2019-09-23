@@ -54,5 +54,11 @@ e_button_name button_decode(uint8_t *can_data, uint8_t len)
     default:
         button = BTN_ERROR;
     }
+
+    if (can_data[0] == 0)
+    {
+        button = BTN_RELEASED;
+    }
+
     return button;
 }

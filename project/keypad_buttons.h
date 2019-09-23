@@ -19,8 +19,11 @@
 
 */
 
-#ifndef KEYPAD_KEYPAD_BUTTONS_TEMPLATE_H_
-#define KEYPAD_KEYPAD_BUTTONS_TEMPLATE_H_
+#ifndef KEYPAD_KEYPAD_BUTTONS_H_
+#define KEYPAD_KEYPAD_BUTTONS_H_
+
+#define KEY_DEBOUNCE_CLICK    1U       /**< Debounce time [debounce cycles] */
+#define KEY_DEBOUNCE_HOLD     10U      /**< Debounce time [debounce cycles] */
 
 /**< Enumeration of buttons */
 typedef enum e_buttons_

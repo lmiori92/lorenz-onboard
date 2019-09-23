@@ -27,9 +27,10 @@
 
 #include "logger.h"
 #include "uart.h"
+#include "timer.h"
 
-static char buffer[100];
-static char logger_buffer[100];
+static char buffer[64];
+static char logger_buffer[64];
 
 void logger(char* message)
 {

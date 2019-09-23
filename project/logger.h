@@ -31,8 +31,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-extern uint32_t milliseconds_since_boot;
-
 void logger(char* message);
 void loggerf(const char* format, ...);
 void crashed(void);

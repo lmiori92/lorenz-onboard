@@ -9,14 +9,17 @@
 
 #include "gui.h"
 #include "megnu/menu.h"
+#include "data_model.h"
 
 static void app_gui_load_page(uint8_t page);
 
 const PROGMEM t_menu_item menu_main_page[] =
 {
-    { "DEBUG",        (void*)(uint8_t)PSU_MENU_DEBUG,        MENU_TYPE_GOTO },
-    { "HALLO",        (void*)(uint8_t)PSU_MENU_DEBUG,        MENU_TYPE_GOTO },
-    { "CAVALLO",        (void*)(uint8_t)PSU_MENU_DEBUG,        MENU_TYPE_GOTO },
+    { "DEBUG",    (void*)(uint8_t)PSU_MENU_DEBUG,        MENU_TYPE_GOTO },
+    { "HALLO",    (void*)(uint8_t)PSU_MENU_DEBUG,        MENU_TYPE_GOTO },
+    { "CAVALLO",  (void*)(uint8_t)PSU_MENU_DEBUG,        MENU_TYPE_GOTO },
+    { "RPM",      (void*)&g_app_data_model.eng_speed,        MENU_TYPE_NUMERIC_16 },
+    { "TEMP",     (void*)&g_app_data_model.eng_coolant,        MENU_TYPE_NUMERIC_8 },
 };
 
 const PROGMEM t_menu_item menu_debug_page[] =

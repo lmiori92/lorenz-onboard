@@ -26,6 +26,7 @@
 #include "opelbid.h"
 #include "deasplay/deasplay.h"
 #include "vehicle/network/display/opel_bid.h"
+#include "timer.h"
 
 /* Network includes */
 #include "isotp/isotp.h"
@@ -41,6 +42,10 @@ static IsoTpSendHandle handle;
 
 void opelbid_display_hal_state_callback(e_deasplay_state state)
 {
+    /* the BID display won't accept messages that are faster that a couple of milliseconds,
+     * therefore wait */
+//    ON_TIMER(5,SOFT_TIMER_0,TIMER_RESET(SOFT_TIMER_0),return );
+
     if ((refresh == true) && (isotp_send_buffer_len == 0) && (state == DEASPLAY_STATE_PERIODIC_END))
     {
         /* send information over CANbus */
@@ -63,12 +68,9 @@ void opelbid_display_hal_state_callback(e_deasplay_state state)
             refresh = false;
 
             if(!handle.success) {
-                // something happened and it already failed - possibly we aren't able to
-                // send CAN messages
-
+                /* something happened and it already failed - possibly we aren't able to send CAN messages */
             } else {
-                // If the message fit in a single frame, it's already been sent
-                // and you're done
+                /* If the message fit in a single frame, it's already been sent and you're done */
             }
         }
     }
