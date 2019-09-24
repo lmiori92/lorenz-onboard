@@ -17,6 +17,7 @@
 #endif
 uint32_t timerbase[SOFT_TIMER_NUM];
 uint32_t milliseconds_since_boot = 0;
+volatile uint32_t microseconds_since_boot = 0;
 
 // with cycles == 0 then the timer is reset (i.e. never "true" and internal state reset to current timestamp)
 /**

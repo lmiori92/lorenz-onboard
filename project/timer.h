@@ -12,6 +12,7 @@
 #include <stdint.h>
 
 extern uint32_t milliseconds_since_boot;
+extern volatile uint32_t microseconds_since_boot;
 
 typedef enum
 {

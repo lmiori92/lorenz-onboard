@@ -36,6 +36,7 @@
 #include <stddef.h>
 
 /* Network layer includes */
+#include "mcp2515_defs.h"
 #include "can.h"
 #include "uart.h"
 
@@ -62,18 +63,23 @@
 #include "debug.h"
 
 /* Cycle Time Definitions */
-#define CYCLE_TIME_US       (10000U)
-#define CYCLE_TIME_MS       (CYCLE_TIME_US / 1000U)
+#define CYCLE_TIME_US       (10000UL)
+#define CYCLE_TIME_MS       (CYCLE_TIME_US / 1000UL)
 
 /** iso-tp buffer */
 uint8_t isotp_receive_buffer[OUR_MAX_ISO_TP_MESSAGE_SIZE];
 
 t_input g_app_data_model = { 0, 0, KEY_NA, BTN_ERROR };
-
+uint8_t can_intr_cnt = 0;
 ISR(TIMER0_COMPA_vect)
 {
+#warning "Please use an additional interrupt for the same counter timer (5 times the 1st)"
+    // 5kHz timer (200us)
+    static uint8_t millisecond_temp_timer = 0U;
     /* increment the global variable */
-    milliseconds_since_boot += 1;
+    millisecond_temp_timer++;
+    if (millisecond_temp_timer >= 5U) milliseconds_since_boot += 1UL;
+    microseconds_since_boot += 200UL;
 }
 
 void StackPaint(void) __attribute__ ((naked)) __attribute__ ((section (".init1")));
@@ -305,35 +311,275 @@ typedef enum
     APP_MAIN_STATE_DEINIT,
     APP_MAIN_STATE_OFF,
 } e_app_main_state;
-#include "mcp2515_defs.h"
+
+
+e_menu_input_event menu_evt = MENU_EVENT_NONE;
+
+void periodic_logic(void)
+{
+
+    menu_evt = MENU_EVENT_NONE;
+
+    // test code !
+//    IsoTpReceiveHandle handlercv = isotp_receive(&shims, 0x6C1, message_received);
+//    isotp_set_receive_buffer(&handlercv, isotp_receive_buffer);
+
+
+//    if(handlercv.success) {
+    // something happened and it already failed - possibly we aren't able to
+    // send CAN messages
+//        logger("failure from start");
+//    } else {
+
+e_key tmp = NUM_BUTTONS;
+can_t rcv_msg;  /* the reception buffer */
+
+if (/*can_check_message()*/ can_get_message(&rcv_msg))
+{
+    if (rcv_msg.id == 0x6C1)
+    {
+                    // Continue to read from CAN, passing off each message to the handle
+//                        IsoTpMessage message = isotp_continue_receive(&shims, &handlercv, rcv_msg.id, rcv_msg.data, rcv_msg.length);
+//                        if(message.completed && handlercv.completed) {
+//                            if(handlercv.success) {
+                            // A message has been received successfully
+//                                logger("message sent at");
+//                            } else {
+                            /* crash the CPU for the time being to debug most of the initial problems */
+//                                crashed();
+                            // Fatal error - we weren't able to receive a message and
+                            // gave up trying. A message using flow control may have
+                            // timed out.
+//                            }
+//                        }
+    }
+    else if (rcv_msg.id == 0x201)
+    {
+//            static e_button_name old_btn_state = BTN_ERROR;
+        g_app_data_model.btn_fresh = true;
+        g_app_data_model.btn_state = button_decode(rcv_msg.data, rcv_msg.length);
+//            if (input.btn_state != old_btn_state)
+//            {
+//                loggerf("button press %d", input.btn_state);
+//                old_btn_state = input.btn_state;
+//            }
+    }
+    else if (rcv_msg.id == 0x450)
+    {
+        static e_key_state old_key_state = KEY_NA;
+        g_app_data_model.key_state = ignition_decode(rcv_msg.data, rcv_msg.length);
+        if (g_app_data_model.key_state != old_key_state)
+        {
+            loggerf("new key position %d", g_app_data_model.key_state);
+            old_key_state = g_app_data_model.key_state;
+        }
+    }
+    else if (rcv_msg.id == 0x4EC)
+    {
+        g_app_data_model.eng_coolant = engine_coolant(rcv_msg.data);
+    }
+    else if (rcv_msg.id == 0x4E8)
+    {
+        g_app_data_model.eng_speed = engine_rpm(rcv_msg.data);
+    }
+    else if (rcv_msg.id == 0x696)
+    {
+        /* display to radio message */
+        if (rcv_msg.data[4] == 0x85)
+        {
+            g_app_data_model.display_page = DISPLAY_PAGE_BOARD_COMPUTER;
+        }
+        else if (rcv_msg.data[4] == 0x81)
+        {
+            g_app_data_model.display_page = DISPLAY_PAGE_RADIO;
+        }
+        else if (rcv_msg.data[4] == 0xA1)
+        {
+            g_app_data_model.display_page = DISPLAY_PAGE_POPUP;
+        }
+        else if (rcv_msg.data[4] == 0x80)
+        {
+            g_app_data_model.display_page = DISPLAY_PAGE_WELCOME_DATE_TIME;
+        }
+        else
+        {
+            g_app_data_model.display_page = DISPLAY_PAGE_UNKNOWN;
+        }
+//            static e_display_page oldpage = DISPLAY_PAGE_UNKNOWN;
+//            if (oldpage != g_app_data_model.display_page)
+//            {
+//                oldpage = g_app_data_model.display_page;
+//                loggerf("page: %d", g_app_data_model.display_page);
+//            }
+    }
+    else if (rcv_msg.id == 0x666)
+    {
+        if ((rcv_msg.data[0] == 'H') && (rcv_msg.data[1] == 'A') &&
+            (rcv_msg.data[2] == 'C') && (rcv_msg.data[3] == 'K'))
+        {
+            /* this is a special ram dump command:
+             * - block all interrupts (be careful not to use interrupt driven devices)
+             * - perform the dump of the memory
+             * - resume normal operation */
+            uint8_t *ramPtr = RAMSTART;
+            can_t asd;
+            asd.id = 0x666;
+            asd.length = 8;
+            asd.flags.extended = 0;
+            asd.flags.rtr = 0;
+            cli();
+            do
+            {
+                //if (ramPtr < (&asd))
+                {
+                    asd.data[0] = *(ramPtr++);
+                    asd.data[1] = *(ramPtr++);
+                    asd.data[2] = *(ramPtr++);
+                    asd.data[3] = *(ramPtr++);
+                    asd.data[4] = *(ramPtr++);
+                    asd.data[5] = *(ramPtr++);
+                    asd.data[6] = *(ramPtr++);
+                    asd.data[7] = *(ramPtr++);
+
+                    uint8_t status;
+                    do
+                    {
+                        /* terminate only when *every* buffer is available
+                         * otherwise messages can be sent out of order */
+                        status = mcp2515_read_status(SPI_READ_STATUS);
+                    } while ((status & 0x54) != 0);
+
+                    can_send_message(&asd);
+                }
+            } while((uint16_t)ramPtr <= (uint16_t)RAMEND);
+            sei();
+        }
+    }
+
+//      loggerf("engrpm  : %d", input.eng_speed);
+//      loggerf("engcool : %d", input.eng_coolant);
+
+
+}
+
+//    continue; //just testing the stack usage
+
+if (g_app_data_model.btn_fresh == true)
+{
+    switch(g_app_data_model.btn_state)
+    {
+    case BTN_BC:
+        tmp = KEYPAD_BTN_BC;
+        break;
+    case BTN_FM_OR_CD:
+        tmp = KEYPAD_BTN_FM_OR_CD;
+        break;
+    case BTN_LEFT:
+        tmp = KEYPAD_BTN_LEFT;
+        break;
+    case BTN_OK:
+        tmp = KEYPAD_BTN_OK;
+        break;
+    case BTN_RIGHT:
+        tmp = KEYPAD_BTN_RIGHT;
+        break;
+    case BTN_SETTINGS:
+        tmp = KEYPAD_BTN_SETTINGS;
+        break;
+    case BTN_ERROR:
+    default:
+        tmp = NUM_BUTTONS;
+        break;
+    }
+    /* set the keypad input state to "true" i.e. pressed */
+    keypad_set_input(tmp, true);
+    g_app_data_model.btn_fresh = false;
+    TIMER_RESET(SOFT_TIMER_1);
+}
+else
+{
+    /* if button timed out: reset keypad state */
+    //ON_TIMER_EXPIRED(50, SOFT_TIMER_1, keypad_reset_input());
+}
+
+/* this logic shall always be run periodically */
+keypad_periodic(timeout(10, SOFT_TIMER_2));
+
+if ((g_app_data_model.display_page == DISPLAY_PAGE_BOARD_COMPUTER)
+        ||
+        (g_app_data_model.display_page == DISPLAY_PAGE_POPUP))
+{
+    /* MENU */
+
+    /* Input event to Menu event mapping */
+    if (keypad_clicked(KEYPAD_BTN_LEFT) == KEY_CLICK) menu_evt = MENU_EVENT_LEFT;
+    if (keypad_clicked(KEYPAD_BTN_RIGHT) == KEY_CLICK) menu_evt = MENU_EVENT_RIGHT;
+
+    (void)menu_event(menu_evt);
+
+    /* periodic function for the menu handler */
+    menu_display();
+
+    ON_TIMER_EXPIRED(4,SOFT_TIMER_0,display_periodic());
+}
+else
+{
+    display_clean();
+}
+
+/* output processing */
+ON_TIMER_EXPIRED(1000, SOFT_TIMER_8, { loggerf("stack: %d", StackCount()); TIMER_RESET(SOFT_TIMER_0); });
+}
+
+inline uint32_t get_us_counter(void)
+{
+    uint32_t temp;
+    TIMSK0 &= ~(_BV(OCIE0A));   /* re-enable the timer interrupt */
+    temp = microseconds_since_boot;
+    TIMSK0  = _BV(OCIE0A);   /* re-enable the timer interrupt */
+    return temp;
+}
+
+/* CAN RX buffer: 12 items, as
+ * we can have roughly 6 frames in 10 milliseconds
+ * and we double that to account for errors and to be on the safe
+ * side:
+ * With STD. frames, 11 bytes min. are necessary (8 data, 1 dlc, 2 ID)
+ * Hence, 132 byte of SRAM
+ */
+volatile can_t MyRxFrame;
+ISR (PCINT0_vect)
+{
+    /* Check if the INT pin is LOW (Frame Rx) */
+    if (can_check_message())
+    {
+        // TODO: only push one frame into a FIFO. This operation shall take less than 200us (as the main timer is ticking at this frequency)
+        can_intr_cnt++;
+        //can_get_message(&MyRxFrame);
+    }
+}
+
 int main(void)
 {
-    e_menu_input_event menu_evt = MENU_EVENT_NONE;
-//    e_app_main_state app_state = APP_MAIN_STATE_INIT;
     bool ok = false;
-    can_t rcv_msg;  /* the reception buffer */
-
-//    uint8_t *stackPaintPtr = RAMEND;
-//    stackPaintPtr -= 1024;
-//    do
-//    {
-//        *stackPaintPtr=0xAA;
-//    } while((uint16_t)(stackPaintPtr++) <= (uint16_t)(RAMEND-16));
+    uint32_t ts_loop;
 
     /* disable all interrupts */
     cli();
 
-    /* Start 1000Hz system timer with TC0 */
-    OCR0A = F_CPU / 64 / 1000 - 1;
-//    OCR0B = F_CPU / 1024 / 1000 - 1;
+    /* Start 5000Hz system timer with TC0 */
+    OCR0A = F_CPU / 64 / 5000 - 1;
     TCCR0A = _BV(WGM01);
     TCCR0B = _BV(CS00) | _BV(CS01);
     TIMSK0 = _BV(OCIE0A);
-//    TIMSK0 = _BV(OCIE0B);
 
     /* Chip select for the MMC/SD */
     DDRD |= (1 << PIND7);
     PORTD &= ~(1 << PIND7);
+
+    /* Setup the PCINT1 CAN Controller interrupt pin */
+    PCICR |= (1 << PCIE0);     // set PCIE0 to enable PCMSK0 scan
+    PCMSK0 |= (1 << PCINT0);   // set PCINT0 to trigger an interrupt on state change
 
     /* enable all interrupts */
     sei();
@@ -346,11 +592,10 @@ int main(void)
 
     logger("starting lorenz-onboard");
     logger("Opel Astra H MS-CAN");
-
     logger("initializing canbus");
     do
     {
-        /* it can happen that we have a failure at boot.
+        /* it can happen that we have a failure at boot e.g. CAN controller is starting
          * Retry indefinitely: the application won't run without a CANbus network! */
         ok = can_init(BITRATE_95_238_KBPS);
     }
@@ -360,284 +605,44 @@ int main(void)
     /* load filters and masks */
     can_static_filter(can_filter);
 
-    // benchmark
-//    can_t asd;
-//    asd.id = 0x700;
-//    asd.length = 8;
-//    asd.flags.extended = false;
-//    asd.flags.rtr = false;
-
-//    while (1)
-//    {
-//        asd.data[0] = (uint8_t)milliseconds_since_boot;
-//        can_send_timed(&asd, 3, CAN_TIMER_0);
-//    }
-
+    ts_loop = get_us_counter();
+    uint32_t cpu_usage_us;
+    uint32_t prev_us;
     while (1)
     {
-        /* Cycle Time Expiration Delay */
-        // TODO: interrupt based CAN buffers...
-//        ok = true;
-//        do
-//        {
-//            ON_TIMER_EXPIRED(CYCLE_TIME_MS, SOFT_TIMER_3, { ok = false; });
-//        } while(ok);
+        can_t asd;
+        asd.id = 0x777;
+        asd.length = 8;
+        asd.flags.extended = 0;
+        asd.flags.rtr = 0;
+        asd.data[0] = (uint8_t)milliseconds_since_boot;
+        asd.data[1] = (uint8_t)(milliseconds_since_boot >> 8);
+        asd.data[2] = (uint8_t)(milliseconds_since_boot >> 16);
+        asd.data[3] = (uint8_t)(milliseconds_since_boot >> 24);
+        asd.data[4] = (uint8_t)cpu_usage_us;
+        asd.data[5] = (uint8_t)(cpu_usage_us >> 8);
+        asd.data[6] = (uint8_t)(cpu_usage_us >> 16);
+        asd.data[7] = can_intr_cnt;//(uint8_t)(cpu_usage_us >> 24);
+        can_send_message(&asd);
 
-        menu_evt = MENU_EVENT_NONE;
+        periodic_logic();
 
-        // test code !
-//    IsoTpReceiveHandle handlercv = isotp_receive(&shims, 0x6C1, message_received);
-//    isotp_set_receive_buffer(&handlercv, isotp_receive_buffer);
-
-
-//    if(handlercv.success) {
-        // something happened and it already failed - possibly we aren't able to
-        // send CAN messages
-//        logger("failure from start");
-//    } else {
-
-    e_key tmp = NUM_BUTTONS;
-
-    if (can_check_message() && can_get_message(&rcv_msg))
-    {
-        if (rcv_msg.id == 0x6C1)
-        {
-//            can_t corrupt;
-//            corrupt.data[0] = 0x10;
-//            corrupt.data[1] = 0x2E;
-//            corrupt.data[2] = 0xC0;
-//            corrupt.data[3] = 0x00;
-//
-//            corrupt.data[4] = 0x2B;
-//            corrupt.data[5] = 0x03;
-//            corrupt.data[6] = 0x01;
-//            corrupt.data[7] = 0x01;
-//
-//            corrupt.flags.extended = 0;
-//            corrupt.flags.rtr = 0;
-//
-//            corrupt.id = 0x6C1;
-//            corrupt.length = 8;
-
-                        // Continue to read from CAN, passing off each message to the handle
-//                        IsoTpMessage message = isotp_continue_receive(&shims, &handlercv, rcv_msg.id, rcv_msg.data, rcv_msg.length);
-//                        if(message.completed && handlercv.completed) {
-//                            if(handlercv.success) {
-                                // A message has been received successfully
-//                                logger("message sent at");
-//                            } else {
-                                /* crash the CPU for the time being to debug most of the initial problems */
-//                                crashed();
-                                // Fatal error - we weren't able to receive a message and
-                                // gave up trying. A message using flow control may have
-                                // timed out.
-//                            }
-//                        }
-        }
-        else if (rcv_msg.id == 0x201)
-        {
-//            static e_button_name old_btn_state = BTN_ERROR;
-            g_app_data_model.btn_fresh = true;
-            g_app_data_model.btn_state = button_decode(rcv_msg.data, rcv_msg.length);
-//            if (input.btn_state != old_btn_state)
-//            {
-//                loggerf("button press %d", input.btn_state);
-//                old_btn_state = input.btn_state;
-//            }
-        }
-        else if (rcv_msg.id == 0x450)
-        {
-            static e_key_state old_key_state = KEY_NA;
-            g_app_data_model.key_state = ignition_decode(rcv_msg.data, rcv_msg.length);
-            if (g_app_data_model.key_state != old_key_state)
+        /* Compute the load of the CPU at the current cycle */
+        cpu_usage_us = (uint32_t)(get_us_counter() - prev_us);
+        DEBUG_EXEC(
+            if (cpu_usage_us > CYCLE_TIME_US)
             {
-                loggerf("new key position %d", g_app_data_model.key_state);
-                old_key_state = g_app_data_model.key_state;
+                logger("WARNING: CPU Time over 100%\n");
             }
-        }
-        else if (rcv_msg.id == 0x4EC)
-        {
-            g_app_data_model.eng_coolant = engine_coolant(rcv_msg.data);
-        }
-        else if (rcv_msg.id == 0x4E8)
-        {
-            g_app_data_model.eng_speed = engine_rpm(rcv_msg.data);
-        }
-        else if (rcv_msg.id == 0x696)
-        {
-            /* display to radio message */
-            if (rcv_msg.data[4] == 0x85)
-            {
-                g_app_data_model.display_page = DISPLAY_PAGE_BOARD_COMPUTER;
-            }
-            else if (rcv_msg.data[4] == 0x81)
-            {
-                g_app_data_model.display_page = DISPLAY_PAGE_RADIO;
-            }
-            else if (rcv_msg.data[4] == 0xA1)
-            {
-                g_app_data_model.display_page = DISPLAY_PAGE_POPUP;
-            }
-            else if (rcv_msg.data[4] == 0x80)
-            {
-                g_app_data_model.display_page = DISPLAY_PAGE_WELCOME_DATE_TIME;
-            }
-            else
-            {
-                g_app_data_model.display_page = DISPLAY_PAGE_UNKNOWN;
-            }
-//            static e_display_page oldpage = DISPLAY_PAGE_UNKNOWN;
-//            if (oldpage != g_app_data_model.display_page)
-//            {
-//                oldpage = g_app_data_model.display_page;
-//                loggerf("page: %d", g_app_data_model.display_page);
-//            }
-        }
-        else if (rcv_msg.id == 0x666)
-        {
-            if ((rcv_msg.data[0] == 'H') && (rcv_msg.data[1] == 'A') &&
-                (rcv_msg.data[2] == 'C') && (rcv_msg.data[3] == 'K'))
-            {
-                /* this is a special ram dump command:
-                 * - block all interrupts (be careful not to use interrupt driven devices)
-                 * - perform the dump of the memory
-                 * - resume normal operation */
-                uint8_t *ramPtr = RAMSTART;
-                can_t asd;
-                asd.id = 0x666;
-                asd.length = 8;
-                asd.flags.extended = 0;
-                asd.flags.rtr = 0;
-                cli();
-                do
-                {
-                    //if (ramPtr < (&asd))
-                    {
-                        asd.data[0] = *(ramPtr++);
-                        asd.data[1] = *(ramPtr++);
-                        asd.data[2] = *(ramPtr++);
-                        asd.data[3] = *(ramPtr++);
-                        asd.data[4] = *(ramPtr++);
-                        asd.data[5] = *(ramPtr++);
-                        asd.data[6] = *(ramPtr++);
-                        asd.data[7] = *(ramPtr++);
+        );
 
-                        uint8_t status;
-                        do
-                        {
-                            /* terminate only when *every* buffer is available
-                             * otherwise messages can be sent out of order */
-                            status = mcp2515_read_status(SPI_READ_STATUS);
-                        } while ((status & 0x54) != 0);
-
-                        can_send_message(&asd);
-                    }
-                } while((uint16_t)ramPtr <= (uint16_t)RAMEND);
-                sei();
-            }
-        }
-
-//      loggerf("engrpm  : %d", input.eng_speed);
-//      loggerf("engcool : %d", input.eng_coolant);
-
-
+        /* Burn the rest of the CPU time */
+        while(get_us_counter() < ts_loop);
+        /* Preload the next cycle */
+        ts_loop += CYCLE_TIME_US;
+        /* Start CPU load measurement */
+        prev_us = get_us_counter();
     }
 
-//    continue; //just testing the stack usage
-
-    if (g_app_data_model.btn_fresh == true)
-    {
-        switch(g_app_data_model.btn_state)
-        {
-        case BTN_BC:
-            tmp = KEYPAD_BTN_BC;
-            break;
-        case BTN_FM_OR_CD:
-            tmp = KEYPAD_BTN_FM_OR_CD;
-            break;
-        case BTN_LEFT:
-            tmp = KEYPAD_BTN_LEFT;
-            break;
-        case BTN_OK:
-            tmp = KEYPAD_BTN_OK;
-            break;
-        case BTN_RIGHT:
-            tmp = KEYPAD_BTN_RIGHT;
-            break;
-        case BTN_SETTINGS:
-            tmp = KEYPAD_BTN_SETTINGS;
-            break;
-        case BTN_ERROR:
-        default:
-            tmp = NUM_BUTTONS;
-            break;
-        }
-        /* set the keypad input state to "true" i.e. pressed */
-        keypad_set_input(tmp, true);
-        g_app_data_model.btn_fresh = false;
-        TIMER_RESET(SOFT_TIMER_1);
-    }
-    else
-    {
-        /* if button timed out: reset keypad state */
-        ON_TIMER_EXPIRED(50, SOFT_TIMER_1, keypad_reset_input());
-    }
-
-    /* this logic shall always be run periodically */
-    keypad_periodic(timeout(10, SOFT_TIMER_2));
-
-    if ((g_app_data_model.display_page == DISPLAY_PAGE_BOARD_COMPUTER)
-            ||
-            (g_app_data_model.display_page == DISPLAY_PAGE_POPUP))
-    {
-        /* MENU */
-
-        /* Input event to Menu event mapping */
-        if (keypad_clicked(KEYPAD_BTN_LEFT) == KEY_CLICK) menu_evt = MENU_EVENT_LEFT;
-        if (keypad_clicked(KEYPAD_BTN_RIGHT) == KEY_CLICK) menu_evt = MENU_EVENT_RIGHT;
-
-        (void)menu_event(menu_evt);
-
-        /* periodic function for the menu handler */
-        menu_display();
-
-        ON_TIMER_EXPIRED(4,SOFT_TIMER_0,display_periodic());
-    }
-    else
-    {
-        display_clean();
-    }
-
-    /* output processing */
-    ON_TIMER_EXPIRED(1000, SOFT_TIMER_8, { loggerf("stack: %d", StackCount()); TIMER_RESET(SOFT_TIMER_0); });
-
-    /* periodic display function */
-//    ON_TIMER(5,SOFT_TIMER_0,TIMER_RESET(SOFT_TIMER_0),return );
-//    display_periodic();
-
-
-    /* Testing the timer */
-//    ON_TIMER_EXPIRED(1000, SOFT_TIMER_10, { logger("timer expired"); TIMER_RESET(SOFT_TIMER_10); });
-//    ON_TIMER_EXPIRED(1000, SOFT_TIMER_10, logger("a"); TIMER_RESET(SOFT_TIMER_10));
-//    ON_TIMER_EXPIRED(1000, SOFT_TIMER_10, TIMER_RESET(SOFT_TIMER_10));
-
-    //ON_TIMER_EXPIRED(5, SOFT_TIMER_10, can_send_message(&rcv_msg));
-
-//    asd.id = 0x696;
-//    asd.length = 8;
-//    asd.flags.extended = 0;
-//    asd.flags.rtr = 0;
-//    asd.data[0] = 0x46;
-//    asd.data[1] = 0x00;
-//    asd.data[2] = 0x60;
-//    asd.data[3] = 0x82;
-//    asd.data[4] = 0x85;
-//    asd.data[5] = 0x00;
-//    asd.data[6] = 0x38;
-//    asd.data[7] = 0x10;
-//    asd.data[0] = (uint8_t)milliseconds_since_boot;
-//    can_send_message(&asd);
-
-    }
     /* shall never get there, reset otherwise */
 }
