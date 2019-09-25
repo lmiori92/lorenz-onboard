@@ -234,6 +234,65 @@ static void process_frame(can_t *frame)
             /* display isotp FC frame */
 
         }
+        else if (frame->id == 0x201)
+        {
+    //            static e_button_name old_btn_state = BTN_ERROR;
+            g_app_data_model.btn_fresh = true;
+            g_app_data_model.btn_state = button_decode(frame->data, frame->length);
+    //            if (input.btn_state != old_btn_state)
+    //            {
+    //                loggerf("button press %d", input.btn_state);
+    //                old_btn_state = input.btn_state;
+    //            }
+        }
+        else if (frame->id == 0x450)
+        {
+            static e_key_state old_key_state = KEY_NA;
+            g_app_data_model.key_state = ignition_decode(frame->data, frame->length);
+            if (g_app_data_model.key_state != old_key_state)
+            {
+                loggerf("new key position %d", g_app_data_model.key_state);
+                old_key_state = g_app_data_model.key_state;
+            }
+        }
+        else if (frame->id == 0x4EC)
+        {
+            g_app_data_model.eng_coolant = engine_coolant(frame->data);
+        }
+        else if (frame->id == 0x4E8)
+        {
+            g_app_data_model.eng_speed = engine_rpm(frame->data);
+        }
+        else if (frame->id == 0x696)
+        {
+            /* display to radio message */
+            if (frame->data[4] == 0x85)
+            {
+                g_app_data_model.display_page = DISPLAY_PAGE_BOARD_COMPUTER;
+            }
+            else if (frame->data[4] == 0x81)
+            {
+                g_app_data_model.display_page = DISPLAY_PAGE_RADIO;
+            }
+            else if (frame->data[4] == 0xA1)
+            {
+                g_app_data_model.display_page = DISPLAY_PAGE_POPUP;
+            }
+            else if (frame->data[4] == 0x80)
+            {
+                g_app_data_model.display_page = DISPLAY_PAGE_WELCOME_DATE_TIME;
+            }
+            else
+            {
+                g_app_data_model.display_page = DISPLAY_PAGE_UNKNOWN;
+            }
+            static e_display_page oldpage = DISPLAY_PAGE_UNKNOWN;
+            if (oldpage != g_app_data_model.display_page)
+            {
+                oldpage = g_app_data_model.display_page;
+                loggerf("page: %d", g_app_data_model.display_page);
+            }
+        }
         else
         {
             /* Unknown frame */
@@ -253,7 +312,7 @@ void periodic_logic(void)
         can_buffer_dequeue(&mybuffer);
     }
 
-    send_data();
+    //send_data();
 
     return;
 
@@ -262,83 +321,8 @@ can_t rcv_msg;  /* the reception buffer */
 
 if (/*can_check_message()*/false )// can_get_message(&rcv_msg))
 {
-    if (rcv_msg.id == 0x6C1)
-    {
-                    // Continue to read from CAN, passing off each message to the handle
-//                        IsoTpMessage message = isotp_continue_receive(&shims, &handlercv, rcv_msg.id, rcv_msg.data, rcv_msg.length);
-//                        if(message.completed && handlercv.completed) {
-//                            if(handlercv.success) {
-                            // A message has been received successfully
-//                                logger("message sent at");
-//                            } else {
-                            /* crash the CPU for the time being to debug most of the initial problems */
-//                                crashed();
-                            // Fatal error - we weren't able to receive a message and
-                            // gave up trying. A message using flow control may have
-                            // timed out.
-//                            }
-//                        }
-    }
-    else if (rcv_msg.id == 0x201)
-    {
-//            static e_button_name old_btn_state = BTN_ERROR;
-        g_app_data_model.btn_fresh = true;
-        g_app_data_model.btn_state = button_decode(rcv_msg.data, rcv_msg.length);
-//            if (input.btn_state != old_btn_state)
-//            {
-//                loggerf("button press %d", input.btn_state);
-//                old_btn_state = input.btn_state;
-//            }
-    }
-    else if (rcv_msg.id == 0x450)
-    {
-        static e_key_state old_key_state = KEY_NA;
-        g_app_data_model.key_state = ignition_decode(rcv_msg.data, rcv_msg.length);
-        if (g_app_data_model.key_state != old_key_state)
-        {
-            loggerf("new key position %d", g_app_data_model.key_state);
-            old_key_state = g_app_data_model.key_state;
-        }
-    }
-    else if (rcv_msg.id == 0x4EC)
-    {
-        g_app_data_model.eng_coolant = engine_coolant(rcv_msg.data);
-    }
-    else if (rcv_msg.id == 0x4E8)
-    {
-        g_app_data_model.eng_speed = engine_rpm(rcv_msg.data);
-    }
-    else if (rcv_msg.id == 0x696)
-    {
-        /* display to radio message */
-        if (rcv_msg.data[4] == 0x85)
-        {
-            g_app_data_model.display_page = DISPLAY_PAGE_BOARD_COMPUTER;
-        }
-        else if (rcv_msg.data[4] == 0x81)
-        {
-            g_app_data_model.display_page = DISPLAY_PAGE_RADIO;
-        }
-        else if (rcv_msg.data[4] == 0xA1)
-        {
-            g_app_data_model.display_page = DISPLAY_PAGE_POPUP;
-        }
-        else if (rcv_msg.data[4] == 0x80)
-        {
-            g_app_data_model.display_page = DISPLAY_PAGE_WELCOME_DATE_TIME;
-        }
-        else
-        {
-            g_app_data_model.display_page = DISPLAY_PAGE_UNKNOWN;
-        }
-//            static e_display_page oldpage = DISPLAY_PAGE_UNKNOWN;
-//            if (oldpage != g_app_data_model.display_page)
-//            {
-//                oldpage = g_app_data_model.display_page;
-//                loggerf("page: %d", g_app_data_model.display_page);
-//            }
-    }
-    else if (rcv_msg.id == 0x666)
+
+    if (rcv_msg.id == 0x666)
     {
         if ((rcv_msg.data[0] == 'H') && (rcv_msg.data[1] == 'A') &&
             (rcv_msg.data[2] == 'C') && (rcv_msg.data[3] == 'K'))

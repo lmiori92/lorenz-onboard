@@ -78,7 +78,7 @@ void uart_init(void)
     UCSR0B = _BV(RXEN) | _BV(TXEN);
 
     /* RX interrupt */
-    UCSR0B |= (1<<RXCIE0);
+    //UCSR0B |= (1<<RXCIE0);
 
 //    UCSR0B = (1<<RXEN0)|(1<<TXEN0);
 //    UCSR0C = (3<<UCSZ00);           /* 8-bit data */
