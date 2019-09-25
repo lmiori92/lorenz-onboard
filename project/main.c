@@ -36,8 +36,7 @@
 #include <stddef.h>
 
 /* Network layer includes */
-#include "mcp2515_defs.h"
-#include "can.h"
+#include "can_hal.h"
 #include "uart.h"
 
 /* Protocol layer includes */
@@ -80,6 +79,7 @@ ISR(TIMER0_COMPA_vect)
     millisecond_temp_timer++;
     if (millisecond_temp_timer >= 5U) milliseconds_since_boot += 1UL;
     microseconds_since_boot += 200UL;
+#warning "please account for errors e.g. other interrupt routine finished a bit later e.g. 250us instead of 200us"
 }
 
 void StackPaint(void) __attribute__ ((naked)) __attribute__ ((section (".init1")));
@@ -128,74 +128,6 @@ uint16_t StackCount(void)
 }
 
 
-// -----------------------------------------------------------------------------
-/** Set filters and masks.
- *
- * The filters are divided in two groups:
- *
- * Group 0: Filter 0 and 1 with corresponding mask 0.
- * Group 1: Filter 2, 3, 4 and 5 with corresponding mask 1.
- *
- * If a group mask is set to 0, the group will receive all messages.
- *
- * If you want to receive ONLY 11 bit identifiers, set your filters
- * and masks as follows:
- *
- *  uint8_t can_filter[] PROGMEM = {
- *      // Group 0
- *      MCP2515_FILTER(0),              // Filter 0
- *      MCP2515_FILTER(0),              // Filter 1
- *
- *      // Group 1
- *      MCP2515_FILTER(0),              // Filter 2
- *      MCP2515_FILTER(0),              // Filter 3
- *      MCP2515_FILTER(0),              // Filter 4
- *      MCP2515_FILTER(0),              // Filter 5
- *
- *      MCP2515_FILTER(0),              // Mask 0 (for group 0)
- *      MCP2515_FILTER(0),              // Mask 1 (for group 1)
- *  };
- *
- *
- * If you want to receive ONLY 29 bit identifiers, set your filters
- * and masks as follows:
- *
- * \code
- *  uint8_t can_filter[] PROGMEM = {
- *      // Group 0
- *      MCP2515_FILTER_EXTENDED(0),     // Filter 0
- *      MCP2515_FILTER_EXTENDED(0),     // Filter 1
- *
- *      // Group 1
- *      MCP2515_FILTER_EXTENDED(0),     // Filter 2
- *      MCP2515_FILTER_EXTENDED(0),     // Filter 3
- *      MCP2515_FILTER_EXTENDED(0),     // Filter 4
- *      MCP2515_FILTER_EXTENDED(0),     // Filter 5
- *
- *      MCP2515_FILTER_EXTENDED(0),     // Mask 0 (for group 0)
- *      MCP2515_FILTER_EXTENDED(0),     // Mask 1 (for group 1)
- *  };
- * \endcode
- *
- * If you want to receive both 11 and 29 bit identifiers, set your filters
- * and masks as follows:
- */
-const uint8_t can_filter[] PROGMEM =
-{
-    // Group 0
-    MCP2515_FILTER(0),              // Filter 0
-    MCP2515_FILTER(0),              // Filter 1
-
-    // Group 1
-    MCP2515_FILTER_EXTENDED(0),     // Filter 2
-    MCP2515_FILTER_EXTENDED(0),     // Filter 3
-    MCP2515_FILTER_EXTENDED(0),     // Filter 4
-    MCP2515_FILTER_EXTENDED(0),     // Filter 5
-
-    MCP2515_FILTER(0),              // Mask 0 (for group 0)
-    MCP2515_FILTER_EXTENDED(0),     // Mask 1 (for group 1)
-};
-// You can receive 11 bit identifiers with either group 0 or 1.
 
 // Optional: This is your callback for when a complete ISO-TP message is
 // received at the arbitration ID you specify. The completed message is
@@ -261,49 +193,6 @@ ISR(BADISR_vect)
     crashed();
 }
 
-//typedef struct
-//{
-//    uint8_t id;
-//    uint8_t data[8];
-//} t_can_frame;
-//
-//#define CAN_BUFFER_0X_SIZE  (0U)
-//#define CAN_BUFFER_1X_SIZE  (0U)
-//#define CAN_BUFFER_2X_SIZE  (0U)
-//#define CAN_BUFFER_3X_SIZE  (0U)
-//#define CAN_BUFFER_4X_SIZE  (0U)
-//#define CAN_BUFFER_5X_SIZE  (0U)
-//#define CAN_BUFFER_6X_SIZE  (0U)
-//#define CAN_BUFFER_7X_SIZE  (0U)
-//
-//typedef struct
-//{
-//#if CAN_BUFFER_0X_SIZE != 0
-//    t_can_frame buf_0x0;
-//#endif
-//#if CAN_BUFFER_0X_SIZE != 0
-//    t_can_frame buf_0x1;
-//#endif
-//#if CAN_BUFFER_0X_SIZE != 0
-//    t_can_frame buf_0x2;
-//#endif
-//#if CAN_BUFFER_0X_SIZE != 0
-//    t_can_frame buf_0x3;
-//#endif
-//#if CAN_BUFFER_0X_SIZE != 0
-//    t_can_frame buf_0x4;
-//#endif
-//#if CAN_BUFFER_0X_SIZE != 0
-//    t_can_frame buf_0x5;
-//#endif
-//#if CAN_BUFFER_0X_SIZE != 0
-//    t_can_frame buf_0x6;
-//#endif
-//#if CAN_BUFFER_0X_SIZE != 0
-//    t_can_frame buf_0x7;
-//#endif
-//} t_can_asd;
-
 typedef enum
 {
     APP_MAIN_STATE_INIT,
@@ -315,26 +204,68 @@ typedef enum
 
 e_menu_input_event menu_evt = MENU_EVENT_NONE;
 
+#include "isotp/send.h"
+static IsoTpSendHandle handle;
+static uint8_t isotp_tx_buffer[64];
+void send_data(void)
+{
+    static bool started = false;
+    if (started == false)
+    {
+        (void)memset(isotp_tx_buffer, 0xA5, 64);
+        started = true;
+        handle = isotp_send(&shims,
+                            0x6C8U,
+                            isotp_tx_buffer,
+                            sizeof(isotp_tx_buffer),
+                            NULL);
+    }
+    else
+    {
+       bool sent = isotp_continue_send(&shims, &handle,
+               0x6C8U, isotp_tx_buffer,
+               sizeof(isotp_tx_buffer));
+       started = !sent;
+    }
+
+}
+
+static void process_frame(can_t *frame)
+{
+    if (frame != NULL)
+    {
+        if (frame->id == 0x2C8UL)
+        {
+            /* display isotp FC frame */
+
+        }
+        else
+        {
+            /* Unknown frame */
+        }
+    }
+}
+
 void periodic_logic(void)
 {
+    can_t *pbuf;
 
-    menu_evt = MENU_EVENT_NONE;
+    /* Process incoming frames */
+    pbuf = can_buffer_get_dequeue_ptr(&mybuffer);
+    if (pbuf != NULL)
+    {
+        process_frame(pbuf);
+        can_buffer_dequeue(&mybuffer);
+    }
 
-    // test code !
-//    IsoTpReceiveHandle handlercv = isotp_receive(&shims, 0x6C1, message_received);
-//    isotp_set_receive_buffer(&handlercv, isotp_receive_buffer);
+    send_data();
 
-
-//    if(handlercv.success) {
-    // something happened and it already failed - possibly we aren't able to
-    // send CAN messages
-//        logger("failure from start");
-//    } else {
+    return;
 
 e_key tmp = NUM_BUTTONS;
 can_t rcv_msg;  /* the reception buffer */
 
-if (/*can_check_message()*/ can_get_message(&rcv_msg))
+if (/*can_check_message()*/false )// can_get_message(&rcv_msg))
 {
     if (rcv_msg.id == 0x6C1)
     {
@@ -421,7 +352,7 @@ if (/*can_check_message()*/ can_get_message(&rcv_msg))
              * - block all interrupts (be careful not to use interrupt driven devices)
              * - perform the dump of the memory
              * - resume normal operation */
-            uint8_t *ramPtr = RAMSTART;
+            uint8_t *ramPtr = (uint8_t*)RAMSTART;
             can_t asd;
             asd.id = 0x666;
             asd.length = 8;
@@ -441,15 +372,15 @@ if (/*can_check_message()*/ can_get_message(&rcv_msg))
                     asd.data[6] = *(ramPtr++);
                     asd.data[7] = *(ramPtr++);
 
-                    uint8_t status;
-                    do
-                    {
-                        /* terminate only when *every* buffer is available
-                         * otherwise messages can be sent out of order */
-                        status = mcp2515_read_status(SPI_READ_STATUS);
-                    } while ((status & 0x54) != 0);
-
-                    can_send_message(&asd);
+//                    uint8_t status;
+//                    do
+//                    {
+//                        /* terminate only when *every* buffer is available
+//                         * otherwise messages can be sent out of order */
+//                        status = mcp2515_read_status(SPI_READ_STATUS);
+//                    } while ((status & 0x54) != 0);
+//
+//                    can_send_message(&asd);
                 }
             } while((uint16_t)ramPtr <= (uint16_t)RAMEND);
             sei();
@@ -527,8 +458,6 @@ else
     display_clean();
 }
 
-/* output processing */
-ON_TIMER_EXPIRED(1000, SOFT_TIMER_8, { loggerf("stack: %d", StackCount()); TIMER_RESET(SOFT_TIMER_0); });
 }
 
 inline uint32_t get_us_counter(void)
@@ -540,24 +469,10 @@ inline uint32_t get_us_counter(void)
     return temp;
 }
 
-/* CAN RX buffer: 12 items, as
- * we can have roughly 6 frames in 10 milliseconds
- * and we double that to account for errors and to be on the safe
- * side:
- * With STD. frames, 11 bytes min. are necessary (8 data, 1 dlc, 2 ID)
- * Hence, 132 byte of SRAM
- */
-volatile can_t MyRxFrame;
-ISR (PCINT0_vect)
-{
-    /* Check if the INT pin is LOW (Frame Rx) */
-    if (can_check_message())
-    {
-        // TODO: only push one frame into a FIFO. This operation shall take less than 200us (as the main timer is ticking at this frequency)
-        can_intr_cnt++;
-        //can_get_message(&MyRxFrame);
-    }
-}
+
+
+
+
 
 int main(void)
 {
@@ -577,9 +492,12 @@ int main(void)
     DDRD |= (1 << PIND7);
     PORTD &= ~(1 << PIND7);
 
-    /* Setup the PCINT1 CAN Controller interrupt pin */
-    PCICR |= (1 << PCIE0);     // set PCIE0 to enable PCMSK0 scan
-    PCMSK0 |= (1 << PCINT0);   // set PCINT0 to trigger an interrupt on state change
+#warning "debug pin"
+    // DEBUG PIN OUTPUT
+    DEBUG_EXEC({
+        DDRB |= (1 << PINB1);
+        PORTB &=~(1 << PINB1);
+    });
 
     /* enable all interrupts */
     sei();
@@ -593,23 +511,15 @@ int main(void)
     logger("starting lorenz-onboard");
     logger("Opel Astra H MS-CAN");
     logger("initializing canbus");
-    do
-    {
-        /* it can happen that we have a failure at boot e.g. CAN controller is starting
-         * Retry indefinitely: the application won't run without a CANbus network! */
-        ok = can_init(BITRATE_95_238_KBPS);
-    }
-    while(ok == false);
-    logger("initialized canbus");
-
-    /* load filters and masks */
-    can_static_filter(can_filter);
+    can_hal_init();
 
     ts_loop = get_us_counter();
-    uint32_t cpu_usage_us;
-    uint32_t prev_us;
+    uint32_t cpu_usage_us = 0;
+    uint32_t prev_us = 0;
     while (1)
     {
+        //PORTB = PORTB ^(1 << PINB1);
+        PORTB |= (1 << PINB1);
         can_t asd;
         asd.id = 0x777;
         asd.length = 8;
@@ -623,18 +533,35 @@ int main(void)
         asd.data[5] = (uint8_t)(cpu_usage_us >> 8);
         asd.data[6] = (uint8_t)(cpu_usage_us >> 16);
         asd.data[7] = can_intr_cnt;//(uint8_t)(cpu_usage_us >> 24);
-        can_send_message(&asd);
+        //can_send_message_safe(&asd);
+
+        /* Diagnose the FIFO full situation */
+        // should be marked by the interrupt !!!
+//        DEBUG_EXEC(
+//                   ok = can_buffer_full(&mybuffer);
+//                   if (ok == true) logger("RX FIFO FULL\n");
+//                  );
+
+
 
         periodic_logic();
 
+        /* output processing */
+//        ON_TIMER_EXPIRED(1000, SOFT_TIMER_8, {
+//                loggerf("RX %02X\n", can_intr_cnt);
+//                loggerf("stack: %d", StackCount());
+//                TIMER_RESET(SOFT_TIMER_0);
+//        });
+
+        //PORTB = PORTB ^(1 << PINB1);
+        PORTB &= ~(1 << PINB1);
         /* Compute the load of the CPU at the current cycle */
         cpu_usage_us = (uint32_t)(get_us_counter() - prev_us);
         DEBUG_EXEC(
             if (cpu_usage_us > CYCLE_TIME_US)
             {
                 logger("WARNING: CPU Time over 100%\n");
-            }
-        );
+            });
 
         /* Burn the rest of the CPU time */
         while(get_us_counter() < ts_loop);
@@ -642,6 +569,7 @@ int main(void)
         ts_loop += CYCLE_TIME_US;
         /* Start CPU load measurement */
         prev_us = get_us_counter();
+
     }
 
     /* shall never get there, reset otherwise */

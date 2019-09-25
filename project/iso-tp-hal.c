@@ -25,12 +25,8 @@
 
 */
 
-/* Driver includes */
-#include "mcp2515_defs.h"
-#include "mcp2515_private.h"
-
 /* Network layer includes */
-#include "can.h"
+#include "can_hal.h"
 
 /* Protocol layer includes */
 #include "isotp/isotp.h"
@@ -72,17 +68,7 @@ bool send_can(const uint32_t arbitration_id, const uint8_t* data,
     message.data[6] = data[6];
     message.data[7] = data[7];
 
-#warning "this causes deadlock on bus problems; plus it wastes time; plus does not do what we want actually"
-    // fix the iso-tp layer by adding a configurable delay ? hmm see
-    uint8_t status;
-    do
-    {
-        /* terminate only when *every* buffer is available
-         * otherwise messages can be sent out of order */
-        status = mcp2515_read_status(SPI_READ_STATUS);
-    } while ((status & 0x54) != 0);
-
-    can_send_message(&message);
+    can_send_message_safe(&message);
 
     return true;
 }
