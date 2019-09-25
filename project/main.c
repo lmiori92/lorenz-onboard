@@ -50,9 +50,6 @@
 #include "vehicle/network/engine/engine.h"
 
 /* Application includes */
-#include "gui.h"
-#include "deasplay.h"
-#include "megnu/menu.h"
 #include "logger.h"
 #include "keypad/keypad.h"
 #include "timer.h"
@@ -201,8 +198,6 @@ typedef enum
     APP_MAIN_STATE_OFF,
 } e_app_main_state;
 
-
-e_menu_input_event menu_evt = MENU_EVENT_NONE;
 
 #include "isotp/send.h"
 static IsoTpSendHandle handle;
@@ -436,28 +431,6 @@ else
 /* this logic shall always be run periodically */
 keypad_periodic(timeout(10, SOFT_TIMER_2));
 
-if ((g_app_data_model.display_page == DISPLAY_PAGE_BOARD_COMPUTER)
-        ||
-        (g_app_data_model.display_page == DISPLAY_PAGE_POPUP))
-{
-    /* MENU */
-
-    /* Input event to Menu event mapping */
-    if (keypad_clicked(KEYPAD_BTN_LEFT) == KEY_CLICK) menu_evt = MENU_EVENT_LEFT;
-    if (keypad_clicked(KEYPAD_BTN_RIGHT) == KEY_CLICK) menu_evt = MENU_EVENT_RIGHT;
-
-    (void)menu_event(menu_evt);
-
-    /* periodic function for the menu handler */
-    menu_display();
-
-    ON_TIMER_EXPIRED(4,SOFT_TIMER_0,display_periodic());
-}
-else
-{
-    display_clean();
-}
-
 }
 
 inline uint32_t get_us_counter(void)
@@ -505,8 +478,6 @@ int main(void)
     /* initializing components */
     uart_init();
     keypad_init();
-    display_init();
-    app_gui_init();
 
     logger("starting lorenz-onboard");
     logger("Opel Astra H MS-CAN");

@@ -5,7 +5,8 @@
  *      Author: lorenzo
  */
 
-
+#warning "use the new timer lib package"
+#include <stdbool.h>
 #include "timer.h"
 #ifdef __AVR
 #include <avr/interrupt.h>
