@@ -62,3 +62,66 @@ e_button_name button_decode(uint8_t *can_data, uint8_t len)
 
     return button;
 }
+
+e_button_name button_decode_wheel(uint8_t *can_data, uint8_t len)
+{
+    e_button_name button = BTN_ERROR;
+
+    if (can_data[0] == 0)
+    {
+        button = BTN_RELEASED;
+    }
+    else
+    {
+        switch(can_data[1])
+        {
+            case 0x81:
+                button = BTN_WHEEL_BTN_LEFT_UP;
+                break;
+            case 0x82:
+                button = BTN_WHEEL_BTN_LEFT_DOWN;
+                break;
+            case 0x83:
+                if (can_data[0] == 0x08)
+                {
+                    if (can_data[2] == 0x01)
+                    {
+                        button = BTN_WHEEL_DIAL_LEFT_UP;
+                    }
+                    else if (can_data[2] == 0xFF)
+                    {
+                        button = BTN_WHEEL_DIAL_LEFT_DOWN;
+                    }
+                }
+                else if (can_data[0] == 0x01)
+                {
+                    button = BTN_WHEEL_DIAL_LEFT_CLICK;
+                }
+                break;
+            case 0x91:
+                button = BTN_WHEEL_BTN_RIGHT_UP;
+                break;
+            case 0x92:
+                button = BTN_WHEEL_BTN_RIGHT_DOWN;
+                break;
+            case 0x93:
+                if (can_data[0] == 0x08)
+                {
+                    if (can_data[2] == 0x01)
+                    {
+                        button = BTN_WHEEL_DIAL_RIGHT_UP;
+                    }
+                    else if (can_data[2] == 0xFF)
+                    {
+                        button = BTN_WHEEL_DIAL_RIGHT_DOWN;
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    return button;
+}
+

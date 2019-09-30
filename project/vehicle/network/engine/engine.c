@@ -27,6 +27,16 @@
 
 #include "engine.h"
 
+uint8_t vehicle_speed(uint8_t *data)
+{
+    return data[4];
+}
+
+uint8_t vehicle_direction(uint8_t *data)
+{
+    return (uint8_t)(data[6] & 0x7U);
+}
+
 uint16_t engine_rpm(uint8_t *data)
 {
     uint16_t retval = data[3];

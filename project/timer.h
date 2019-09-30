@@ -31,7 +31,9 @@ typedef enum
 } e_timer_id;
 
 #define TIMER_RESET_VALUE     (0U)
+#define TIMER_LATCH_VALUE     (UINT32_MAX)
 #define TIMER_RESET(x)        ((void)timeout(TIMER_RESET_VALUE, (x)))
+#define TIMER_LATCH(x)        ((void)timeout(TIMER_LATCH_VALUE, (x)))
 #define ON_TIMER_EXPIRED(cycles,identifier,callback)        if (timeout(cycles, identifier) == true) { callback; }
 #define ON_TIMER_NOT_EXPIRED(cycles,identifier,callback)    if (timeout(cycles, identifier) == false) { callback; }
 #define ON_TIMER(cycles,identifier,callback,callback2)    if (timeout(cycles, identifier) == true) { callback; } else { callback2; }

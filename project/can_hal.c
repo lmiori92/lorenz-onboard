@@ -16,6 +16,7 @@
 
 can_buffer_t mybuffer;
 can_t        mybuffer_items[CAN_RX_BUFFER_COUNT];
+bool         mybuffer_overrun = false;
 
 // -----------------------------------------------------------------------------
 /** Set filters and masks.
@@ -89,7 +90,7 @@ const uint8_t can_filter[] PROGMEM =
 void can_hal_init(void)
 {
     /* Setup the RX FIFO */
-    can_buffer_init(&mybuffer, sizeof(mybuffer_items)/sizeof(mybuffer_items[0]), mybuffer_items);
+    can_buffer_init(&mybuffer, CAN_RX_BUFFER_COUNT, mybuffer_items);
 
     /* Setup the PCINT1 CAN Controller interrupt pin */
     PCICR |= (1 << PCIE0);     // set PCIE0 to enable PCMSK0 scan
@@ -112,9 +113,12 @@ void can_hal_init(void)
 // Disable the RX interrupt first and then transmit. Finally, re-enable the isr
 void can_send_message_safe(can_t *frame)
 {
-    PCMSK0 &= ~(1 << PCINT0);   // set PCINT0 to trigger an interrupt on state change
-    (void)can_send_message(frame);
-    PCMSK0 |= (1 << PCINT0);   // set PCINT0 to trigger an interrupt on state change
+    //PCMSK0 &= ~(1 << PCINT0);   // set PCINT0 to trigger an interrupt on state change
+#warning "to check if to use PCICR?"
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        (void)can_send_message(frame);
+    }
+    //PCMSK0 |= (1 << PCINT0);   // set PCINT0 to trigger an interrupt on state change
 }
 
 /* CAN RX buffer: 12 items, as
@@ -124,12 +128,17 @@ void can_send_message_safe(can_t *frame)
  * With STD. frames, 11 bytes min. are necessary (8 data, 1 dlc, 2 ID)
  * Hence, 132 byte of SRAM
  */
+uint32_t msgrxcnt = 0;
 ISR (PCINT0_vect)
 {
     can_t        *rx_can_frame;
-    /* Check if the INT pin is LOW (Frame Rx) */
-    if (((PINB & (1<<PINB0)) == 0))
+    uint8_t maxrx = 0;
+    /* Check if the INT pin is LOW (Frame Rx):
+     * keep doing that for at most 2 times in a row (2 RX buffers) */
+    while (((PINB & (1<<PINB0)) == 0) && (maxrx <= 2))
     {
+        maxrx++;
+        msgrxcnt++;
         /* The operation takes 102us (measured with oscilloscope),
          * half the main timer tick */
         rx_can_frame = can_buffer_get_enqueue_ptr(&mybuffer);
@@ -137,6 +146,14 @@ ISR (PCINT0_vect)
         {
             can_get_message(rx_can_frame);
             can_buffer_enqueue(&mybuffer);
+            mybuffer_overrun = false;
+        }
+        else
+        {
+            /* Read and discard frame */
+            can_t asd;
+            can_get_message(&asd);
+            mybuffer_overrun = true;
         }
     }
 }

@@ -30,6 +30,9 @@
 
 #include <stdint.h>
 
+#define OPEL_CD30_BUTTON_CAN_ID             (0x201UL)
+#define OPEL_CD30_BUTTON_WHEEL_CAN_ID       (0x206UL)
+
 typedef enum
 {
     BTN_ERROR,
@@ -39,9 +42,19 @@ typedef enum
     BTN_RIGHT,
     BTN_FM_OR_CD,
     BTN_SETTINGS,
+    BTN_WHEEL_DIAL_LEFT_UP,
+    BTN_WHEEL_DIAL_LEFT_DOWN,
+    BTN_WHEEL_DIAL_LEFT_CLICK,
+    BTN_WHEEL_DIAL_RIGHT_UP,
+    BTN_WHEEL_DIAL_RIGHT_DOWN,
+    BTN_WHEEL_BTN_LEFT_UP,
+    BTN_WHEEL_BTN_LEFT_DOWN,
+    BTN_WHEEL_BTN_RIGHT_UP,
+    BTN_WHEEL_BTN_RIGHT_DOWN,
     BTN_RELEASED
 } e_button_name;
 
 e_button_name button_decode(uint8_t *can_data, uint8_t len);
+e_button_name button_decode_wheel(uint8_t *can_data, uint8_t len);
 
 #endif /* VEHICLE_NETWORK_RADIO_OPEL_CD30_H_ */

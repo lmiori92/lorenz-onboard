@@ -22,8 +22,8 @@
 #ifndef KEYPAD_KEYPAD_BUTTONS_H_
 #define KEYPAD_KEYPAD_BUTTONS_H_
 
-#define KEY_DEBOUNCE_CLICK    1U       /**< Debounce time [debounce cycles] */
-#define KEY_DEBOUNCE_HOLD     10U      /**< Debounce time [debounce cycles] */
+#define KEY_DEBOUNCE_CLICK    0U       /**< Debounce time [debounce cycles] */
+#define KEY_DEBOUNCE_HOLD     75U      /**< Debounce time [debounce cycles] */
 
 /**< Enumeration of buttons */
 typedef enum e_buttons_
@@ -34,6 +34,8 @@ typedef enum e_buttons_
     KEYPAD_BTN_RIGHT,
     KEYPAD_BTN_FM_OR_CD,
     KEYPAD_BTN_SETTINGS,
+    KEYPAD_BTN_WHEEL_DIAL_UP,
+    KEYPAD_BTN_WHEEL_DIAL_DOWN,
     /** This entry MUST be there and be the last one */
     NUM_BUTTONS
 } e_key;

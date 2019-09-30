@@ -26,11 +26,13 @@ volatile uint32_t microseconds_since_boot = 0;
  * it is using a counter that is updated in software off a hardware timer
  * Interrupt Service Routine.
  * If the number of cycles if equal to zero, it means "timer is on reset state" i.e.
- * the counter is set to the current value.
+ * the counter is set to the current value and always not expired.
+ * If the number of cycles if equal to zero, it means "timer is on hold state" i.e.
+ * the counter is set to the current value and always expired.
  * The used timebase is 1 millisecond.
  * @param cycles        the number of cycles to count before a timeout occurs
  * @param timer_id      the soft-timer identifier
- * @return  true : timer expired
+ * @return  true : timer expired or in hold state
  *          false: timer not yet expired or in reset state
  */
 bool timeout(uint32_t cycles, e_timer_id timer_id)
@@ -48,10 +50,16 @@ bool timeout(uint32_t cycles, e_timer_id timer_id)
             timerbase[timer_id] = tmr;
             retval = false;
         }
+        else if (cycles == UINT32_MAX)
+        {
+            /* latch */
+            timerbase[timer_id] = tmr;
+            retval = true;
+        }
         else if (((uint32_t)tmr - (uint32_t)timerbase[timer_id]) >= (uint32_t)cycles)
         {
             /* send */
-            timerbase[timer_id] = tmr;
+            //timerbase[timer_id] = tmr;
             retval = true;
         }
         else

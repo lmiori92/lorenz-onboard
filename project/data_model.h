@@ -25,13 +25,19 @@ typedef enum
 
 typedef struct
 {
-    int8_t              eng_coolant;
-    uint16_t            eng_speed;
+    int8_t              eng_coolant;            /**< Engine coolant temperature [°C]  */
+    uint16_t            eng_speed;              /**< Engine rotation speed [RPM]      */
+    uint8_t             vehicle_speed;          /**< Vehicle speed [Km/h]             */
+    uint8_t             vehicle_direction;      /**< 1: stand; 2: forward; 4: reverse */
     e_key_state         key_state;
     e_button_name       btn_state;
     bool                btn_fresh;
+    e_button_name       btn_wheel_state;
+    bool                btn_wheel_fresh;
     uint8_t             btn_state_timeout;
     e_display_page      display_page;
+    uint16_t            gearbox_calc_ratio;
+    uint8_t             gearbox_calc_gear;
 } t_input;
 
 extern t_input g_app_data_model;

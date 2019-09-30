@@ -30,6 +30,8 @@
 
 #include <stdint.h>
 
+uint8_t vehicle_speed(uint8_t *data);
+uint8_t vehicle_direction(uint8_t *data);
 uint16_t engine_rpm(uint8_t *data);
 int8_t  engine_coolant(uint8_t *data);
 
