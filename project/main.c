@@ -467,14 +467,6 @@ void keypad_set_input_from_model(e_button_name button)
     }
 }
 
-void keypad_reset_input(void)
-{
-    for (uint8_t i = 0; i < (uint8_t)NUM_BUTTONS; i++)
-    {
-        keypad_set_input((e_key)i, false);
-    }
-}
-
 void periodic_logic(void)
 {
     can_t *pbuf;
