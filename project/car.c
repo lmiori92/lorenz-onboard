@@ -17,7 +17,7 @@
  * is used and to do so the formula is calculated in a split fashion:
  * (considering: RPM Max = 8000 and Vehicle Speed = 200
  *
- * V1 = (RPM * 100000) / ((AxleRatio*100) * Vehicle Speed)
+ * V1 = (RPM * 10000) / ((AxleRatio*100) * Vehicle Speed)
  * (GearRatio*100) = V1 * 27 / 209
  *
  *
@@ -28,11 +28,11 @@
 static uint16_t gearbox_ratio_calc(uint8_t vehicle_speed, uint16_t engine_speed)
 {
     uint16_t retval = UINT16_MAX;
-    uint32_t V1;
+    uint32_t V1     = 0U;
 
     if (vehicle_speed > 0U)
     {
-        V1 = (uint32_t)((uint32_t)engine_speed * 100000UL);
+        V1 = (uint32_t)((uint32_t)engine_speed * 10000UL);
         V1 /= (uint32_t)((uint32_t)vehicle_speed * (uint32_t)Z19DTH_M32_GEARBOX_RATIO_AXLE);
         V1 *= 27UL;
         V1 /= 209UL;
@@ -95,11 +95,12 @@ void car_logic(void)
     g_app_data_model.gearbox_calc_ratio = gearbox_ratio_calc(g_app_data_model.vehicle_speed, g_app_data_model.eng_speed);
     g_app_data_model.gearbox_calc_gear  = gearbox_ratio_to_gear_number(g_app_data_model.gearbox_calc_ratio, (g_app_data_model.vehicle_direction == 0x04U));
 }
-
+#include <stdio.h>
+#include "logger.h"
 void car_print_debug(void)
 {
     char buffer[100];
-    snprintf(buffer, sizeof(buffer), "SPD: %ud; RPM: %ud GR: %ud G: %ud",
+    snprintf(buffer, sizeof(buffer), "SPD: %u; RPM: %u GR: %u G: %ud",
              g_app_data_model.vehicle_speed,
              g_app_data_model.eng_speed,
              g_app_data_model.gearbox_calc_ratio,

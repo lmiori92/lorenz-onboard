@@ -50,6 +50,7 @@
 #include "keypad/keypad.h"
 #include "timer.h"
 #include "data_model.h"
+#include "car.h"
 
 /* Debugging includes */
 #include "debug.h"
@@ -567,6 +568,16 @@ static uint8_t send_cardata = 0;
                 snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "PAGE");
                 snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%d", g_app_data_model.display_page);
             }
+            else if (send_cardata == 5)
+            {
+                snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "G.");
+                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%d", g_app_data_model.gearbox_calc_gear);
+            }
+            else if (send_cardata == 6)
+            {
+                snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "GR.");
+                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%d", g_app_data_model.gearbox_calc_ratio);
+            }
             else
             {
                 send_cardata = 0;
@@ -677,9 +688,10 @@ if (/*can_check_message()*/false )// can_get_message(&rcv_msg))
 inline uint32_t get_us_counter(void)
 {
     uint32_t temp;
-    TIMSK0 &= ~(_BV(OCIE0A));   /* re-enable the timer interrupt */
-    temp = microseconds_since_boot;
-    TIMSK0  = _BV(OCIE0A);   /* re-enable the timer interrupt */
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
+    {
+        temp = microseconds_since_boot;
+    }
     return temp;
 }
 
@@ -722,10 +734,10 @@ int main(void)
     ts_loop = get_us_counter();
     uint32_t cpu_usage_us = 0;
     uint32_t prev_us = 0;
+    uint32_t accumulator_us_per_sec = 0;
     while (1)
     {
-        //PORTB = PORTB ^(1 << PINB1);
-        PORTB |= (1 << PINB1);
+        //PORTB |= (1 << PINB1);
         can_t asd;
         asd.id = 0x777;
         asd.length = 8;
@@ -741,18 +753,13 @@ int main(void)
         asd.data[7] = (uint8_t)(cpu_usage_us >> 24);
         //can_send_message_safe(&asd);
 
-        /* Diagnose the FIFO full situation */
-        // should be marked by the interrupt !!!
-//        DEBUG_EXEC(
-//                   ok = can_buffer_full(&mybuffer);
-//                   if (ok == true) logger("RX FIFO FULL\n");
-//                  );
-
-
-
         periodic_logic();
         extern uint32_t msgrxcnt;
-        ON_TIMER_EXPIRED(1000, SOFT_TIMER_9, { loggerf("Alive %dl", msgrxcnt); car_print_debug(); TIMER_RESET(SOFT_TIMER_9); });
+        ON_TIMER_EXPIRED(1000, SOFT_TIMER_9, {
+                loggerf("Alive %dl", msgrxcnt);
+                car_print_debug();
+                TIMER_RESET(SOFT_TIMER_9);
+        });
 
         /* output processing */
 //        ON_TIMER_EXPIRED(1000, SOFT_TIMER_8, {
@@ -762,7 +769,6 @@ int main(void)
 //        });
 
         //PORTB = PORTB ^(1 << PINB1);
-        PORTB &= ~(1 << PINB1);
         /* Compute the load of the CPU at the current cycle */
         cpu_usage_us = (uint32_t)(get_us_counter() - prev_us);
         DEBUG_EXEC(
@@ -770,9 +776,18 @@ int main(void)
             {
                 logger("WARNING: CPU Time over 100%\n");
             });
+        accumulator_us_per_sec += cpu_usage_us;
+        ON_TIMER_EXPIRED(1000, SOFT_TIMER_9, {
+                loggerf("CPU us per 1 second %lu", accumulator_us_per_sec);
+                accumulator_us_per_sec = 0;
+                /*car_print_debug(); */
+                TIMER_RESET(SOFT_TIMER_9);
+        });
 
         /* Burn the rest of the CPU time */
-        while(get_us_counter() < ts_loop);
+        while(get_us_counter() <= ts_loop);
+        // Measure the cycle time PORTB = PORTB ^(1 << PINB1);
+        //PORTB &= ~(1 << PINB1);
         /* Preload the next cycle */
         ts_loop += CYCLE_TIME_US;
         /* Start CPU load measurement */

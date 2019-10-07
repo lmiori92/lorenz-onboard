@@ -107,18 +107,17 @@ void can_hal_init(void)
     logger("initialized canbus");
 
     /* load filters and masks */
-    can_static_filter(can_filter);
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        can_static_filter(can_filter);
+    }
 }
 
 // Disable the RX interrupt first and then transmit. Finally, re-enable the isr
 void can_send_message_safe(can_t *frame)
 {
-    //PCMSK0 &= ~(1 << PCINT0);   // set PCINT0 to trigger an interrupt on state change
-#warning "to check if to use PCICR?"
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
         (void)can_send_message(frame);
     }
-    //PCMSK0 |= (1 << PCINT0);   // set PCINT0 to trigger an interrupt on state change
 }
 
 /* CAN RX buffer: 12 items, as
@@ -146,7 +145,6 @@ ISR (PCINT0_vect)
         {
             can_get_message(rx_can_frame);
             can_buffer_enqueue(&mybuffer);
-            mybuffer_overrun = false;
         }
         else
         {

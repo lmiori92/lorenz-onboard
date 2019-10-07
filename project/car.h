@@ -14,7 +14,6 @@
 /* All operations are performed in integer computations.
  * Floats are definitely too slow on the AVR platform. */
 
-
 /*
  * Gear ratios:
  * 1st ratio: 3.82
@@ -35,7 +34,7 @@
 #define Z19DTH_M32_GEARBOX_RATIO_REV    (355U)
 #define Z19DTH_M32_GEARBOX_RATIO_AXLE   (365U)
 
-#define GEAR_RATIO_ERROR_RANGE          (5U)
+#define GEAR_RATIO_ERROR_RANGE          (8U)
 
 #define Z19DTH_M32_THR_GEARBOX_RATIO_1ST    (Z19DTH_M32_GEARBOX_RATIO_1ST - GEAR_RATIO_ERROR_RANGE)
 #define Z19DTH_M32_THR_GEARBOX_RATIO_2ND    (Z19DTH_M32_GEARBOX_RATIO_2ND - GEAR_RATIO_ERROR_RANGE)
