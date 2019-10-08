@@ -239,6 +239,9 @@ static void process_textbox(can_t *frame, e_textbox_tx_state *state)
                 }
             }
             break;
+        default:
+            /* Another state in progress */
+            break;
     }
 }
 
@@ -450,6 +453,27 @@ void keypad_set_input_from_model(e_button_name button)
     case BTN_WHEEL_DIAL_LEFT_DOWN:
         key = KEYPAD_BTN_WHEEL_DIAL_DOWN;
         break;
+    case BTN_WHEEL_DIAL_LEFT_CLICK:
+        key = KEYPAD_BTN_WHEEL_DIAL_LEFT_CLICK;
+        break;
+    case BTN_WHEEL_DIAL_RIGHT_UP:
+        key = KEYPAD_BTN_WHEEL_BTN_RIGHT_UP;
+        break;
+    case BTN_WHEEL_DIAL_RIGHT_DOWN:
+        key = KEYPAD_BTN_WHEEL_DIAL_RIGHT_DOWN;
+        break;
+    case BTN_WHEEL_BTN_LEFT_UP:
+        key = KEYPAD_BTN_WHEEL_BTN_LEFT_UP;
+        break;
+    case BTN_WHEEL_BTN_LEFT_DOWN:
+        key = KEYPAD_BTN_WHEEL_BTN_LEFT_DOWN;
+        break;
+    case BTN_WHEEL_BTN_RIGHT_UP:
+        key = KEYPAD_BTN_WHEEL_BTN_RIGHT_UP;
+        break;
+    case BTN_WHEEL_BTN_RIGHT_DOWN:
+        key = KEYPAD_BTN_WHEEL_BTN_RIGHT_DOWN;
+        break;
     case BTN_ERROR:
     default:
         key = NUM_BUTTONS;
@@ -467,6 +491,11 @@ void keypad_set_input_from_model(e_button_name button)
         keypad_set_input(key, true);
     }
 }
+
+#warning "for testing only"
+uint8_t btn_send_counter = 0x00U;
+uint8_t btn_send_code = 0x00U;
+uint8_t btn_send_state = 0; // 0: off; 1: pressed; 2: send a single release
 
 void periodic_logic(void)
 {
@@ -519,7 +548,12 @@ void periodic_logic(void)
     }
 
     /* Process timeout at some point */
-    ON_TIMER_EXPIRED(500, SOFT_TIMER_1, keypad_reset_input());
+    ON_TIMER_EXPIRED(500, SOFT_TIMER_1,
+    {
+        keypad_reset_input();
+        g_app_data_model.btn_wheel_state = BTN_RELEASED;
+        g_app_data_model.btn_fresh = false;
+    });
 
     /* Execute the keypad logic */
     keypad_periodic(true);
@@ -531,18 +565,10 @@ static uint8_t send_cardata = 0;
         strcpy(textbox_tx_state.popup_right_text,  "9123");
         loggerf("DialDown");
     }
-    if (keypad_clicked(KEYPAD_BTN_WHEEL_DIAL_DOWN) == KEY_HOLD)
-    {
-        loggerf("DialDown Hold");
-    }
     if (keypad_clicked(KEYPAD_BTN_WHEEL_DIAL_UP) == KEY_CLICK)
     {
         send_cardata++;
         loggerf("DialUp");
-    }
-    if (keypad_clicked(KEYPAD_BTN_WHEEL_DIAL_UP) == KEY_HOLD)
-    {
-        loggerf("DialUp Hold");
     }
 
     if (textbox_tx_state.popup_tx_state == TEXTBOX_TX_STATE_IDLE)
@@ -551,32 +577,32 @@ static uint8_t send_cardata = 0;
             if (send_cardata == 1)
             {
                 snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "Key");
-                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%d", g_app_data_model.key_state);
+                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%u", g_app_data_model.key_state);
             }
             else if (send_cardata == 2)
             {
                 snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "RPM");
-                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%d", g_app_data_model.eng_speed);
+                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%u", g_app_data_model.eng_speed);
             }
             else if (send_cardata == 3)
             {
-                snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "TEMP");
-                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%d", g_app_data_model.eng_coolant);
+                snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "TEM");
+                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%u", g_app_data_model.eng_coolant);
             }
             else if (send_cardata == 4)
             {
-                snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "PAGE");
-                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%d", g_app_data_model.display_page);
+                snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "SPD");
+                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%u", g_app_data_model.vehicle_speed);
             }
             else if (send_cardata == 5)
             {
                 snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "G.");
-                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%d", g_app_data_model.gearbox_calc_gear);
+                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%u", g_app_data_model.gearbox_calc_gear);
             }
             else if (send_cardata == 6)
             {
                 snprintf(textbox_tx_state.popup_left_text, sizeof(textbox_tx_state.popup_left_text), "GR.");
-                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%d", g_app_data_model.gearbox_calc_ratio);
+                snprintf(textbox_tx_state.popup_right_text, sizeof(textbox_tx_state.popup_left_text), "%u", g_app_data_model.gearbox_calc_ratio);
             }
             else
             {
@@ -629,7 +655,87 @@ static uint8_t send_cardata = 0;
             textbox_tx_state.popup_tx_state = TEXTBOX_TX_STATE_IDLE;
     });
 
+    if (btn_send_state == 1)
+    { /* Only if transmitting in the first place! */
+        /* Read the raw button state and gateway it as a car radio button */
+        if ((g_app_data_model.btn_wheel_state != BTN_WHEEL_DIAL_LEFT_UP) &&
+            (btn_send_code == 0x01U))
+        {
+            btn_send_state = 2; /* go into the release state */
+        }
+        else if ((g_app_data_model.btn_wheel_state != BTN_WHEEL_DIAL_LEFT_DOWN) &&
+                (btn_send_code == 0xFFU))
+        {
+            btn_send_state = 2; /* go into the release state */
+        }
+        else if ((g_app_data_model.btn_wheel_state != BTN_WHEEL_BTN_LEFT_UP) &&
+                (btn_send_code == 0x6FU))
+        {
+            btn_send_state = 2; /* go into the release state */
+        }
+    }
+    else if (btn_send_state == 0)
+    { /* Only if idling */
+        if (keypad_clicked(KEYPAD_BTN_WHEEL_DIAL_UP) == KEY_HOLD)
+        {
+            /* Start the emulation of the BC button */
+            btn_send_code = 0x01U;
+        }
+        if (keypad_clicked(KEYPAD_BTN_WHEEL_DIAL_DOWN) == KEY_HOLD)
+        {
+            /* Start the emulation of the SETTINGS button */
+            btn_send_code = 0xFFU;
+        }
+        if (keypad_clicked(KEYPAD_BTN_WHEEL_BTN_LEFT_UP) == KEY_CLICK)
+        {
+            /* Start the emulation of the OK button */
+            btn_send_code = 0x6FU;
+        }
+    }
 
+    /* Transmit the 0x201 frame which is a car radio button pressed */
+    can_t btn_radio_frame;
+    btn_radio_frame.length = 3U;
+    btn_radio_frame.id = 0x201UL;
+    btn_radio_frame.flags.extended = 0;
+    btn_radio_frame.flags.rtr = 0;
+    /* Execute the output processing every 100ms */
+    ON_TIMER_EXPIRED(100, SOFT_TIMER_7, {
+
+        if ((btn_send_code != 0) && ((btn_send_state == 0)))
+        {
+            btn_send_state = 1;
+        }
+
+        if (btn_send_state == 0)
+        {
+            /* Do not do anythin special */
+        }
+        else if (btn_send_state == 1)
+        {
+            /* Transmit and increment counter (pressed) */
+            btn_radio_frame.data[0] = 0x01U;
+            btn_radio_frame.data[1] = btn_send_code;
+            btn_radio_frame.data[2] = btn_send_counter;
+            if (btn_send_counter < 0xFF)
+            {
+                btn_send_counter++;
+            }
+            can_send_message_safe(&btn_radio_frame);
+        }
+        else
+        {
+            /* Send button released */
+            btn_send_state = 0;     /* back to off immediately */
+            btn_radio_frame.data[0] = 0x00U;
+            btn_radio_frame.data[1] = btn_send_code;
+            btn_radio_frame.data[2] = btn_send_counter;
+            can_send_message_safe(&btn_radio_frame);
+            btn_send_counter = 0;   /* reset the counter for the next operation */
+            btn_send_code = 0;      /* reset the code for the next operation */
+        }
+        TIMER_RESET(SOFT_TIMER_7);
+    });
 
     return;
 
@@ -675,7 +781,7 @@ if (/*can_check_message()*/false )// can_get_message(&rcv_msg))
 //                        status = mcp2515_read_status(SPI_READ_STATUS);
 //                    } while ((status & 0x54) != 0);
 //
-//                    can_send_message(&asd);
+                    can_send_message_safe(&asd);
                 }
             } while((uint16_t)ramPtr <= (uint16_t)RAMEND);
             sei();
@@ -738,26 +844,26 @@ int main(void)
     while (1)
     {
         //PORTB |= (1 << PINB1);
-        can_t asd;
-        asd.id = 0x777;
-        asd.length = 8;
-        asd.flags.extended = 0;
-        asd.flags.rtr = 0;
-        asd.data[0] = (uint8_t)milliseconds_since_boot;
-        asd.data[1] = (uint8_t)(milliseconds_since_boot >> 8);
-        asd.data[2] = (uint8_t)(milliseconds_since_boot >> 16);
-        asd.data[3] = (uint8_t)(milliseconds_since_boot >> 24);
-        asd.data[4] = (uint8_t)cpu_usage_us;
-        asd.data[5] = (uint8_t)(cpu_usage_us >> 8);
-        asd.data[6] = (uint8_t)(cpu_usage_us >> 16);
-        asd.data[7] = (uint8_t)(cpu_usage_us >> 24);
+//        can_t asd;
+//        asd.id = 0x777;
+//        asd.length = 8;
+//        asd.flags.extended = 0;
+//        asd.flags.rtr = 0;
+//        asd.data[0] = (uint8_t)milliseconds_since_boot;
+//        asd.data[1] = (uint8_t)(milliseconds_since_boot >> 8);
+//        asd.data[2] = (uint8_t)(milliseconds_since_boot >> 16);
+//        asd.data[3] = (uint8_t)(milliseconds_since_boot >> 24);
+//        asd.data[4] = (uint8_t)cpu_usage_us;
+//        asd.data[5] = (uint8_t)(cpu_usage_us >> 8);
+//        asd.data[6] = (uint8_t)(cpu_usage_us >> 16);
+//        asd.data[7] = (uint8_t)(cpu_usage_us >> 24);
         //can_send_message_safe(&asd);
 
         periodic_logic();
         extern uint32_t msgrxcnt;
         ON_TIMER_EXPIRED(1000, SOFT_TIMER_9, {
                 loggerf("Alive %dl", msgrxcnt);
-                car_print_debug();
+                /*car_print_debug(); */
                 TIMER_RESET(SOFT_TIMER_9);
         });
 
