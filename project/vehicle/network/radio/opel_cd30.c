@@ -26,6 +26,13 @@
 */
 
 #include "opel_cd30.h"
+#warning "we could also decode the encoder wheel of the ECS controller"
+/* Specifications
+ * 208#0816FF000000 -> ECS LEFT
+ * 208#081601000000 -> ECS RIGHT
+ * 208#011700000000 -> ECS PRESS
+ * 208#001700000000 -> ECS RELEASE
+ * */
 
 e_button_name button_decode(uint8_t *can_data, uint8_t len)
 {

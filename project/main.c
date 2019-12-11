@@ -261,6 +261,8 @@ static void show_textbox(e_textbox_type type, char* text, can_t *frame, e_textbo
 
     text_len = strlen(text);
 
+    frame->length = 0;
+
     if (text_len == 0) return;  // no text !
 
     switch(*state)
@@ -386,34 +388,36 @@ static void process_frame(can_t *frame)
             g_app_data_model.eng_speed = engine_rpm(frame->data);
             g_app_data_model.vehicle_direction = vehicle_direction(frame->data);
         }
-        else if (frame->id == 0x696)
+        else if (frame->id == 0x2B0)
         {
             /* display to radio message */
-            if (frame->data[4] == 0x85)
+            if ((frame->data[1] == 0x04U) && (frame->data[2] == 0x08U))
             {
+                /* Board Computer display */
                 g_app_data_model.display_page = DISPLAY_PAGE_BOARD_COMPUTER;
             }
-            else if (frame->data[4] == 0x81)
+            else if ((frame->data[1] == 0x0CU) && (frame->data[2] == 0x00U))
             {
+                /* Main Menu */
                 g_app_data_model.display_page = DISPLAY_PAGE_RADIO;
             }
-            else if (frame->data[4] == 0xA1)
+//            else if (frame->data[4] == 0x80)
+//            {
+//                g_app_data_model.display_page = DISPLAY_PAGE_WELCOME_DATE_TIME;
+//            }
+            else if ((frame->data[1] == 0x0AU) && (frame->data[2] == 0x00U))
             {
-                g_app_data_model.display_page = DISPLAY_PAGE_POPUP;
+                /* ECS menu */
+                g_app_data_model.display_page = DISPLAY_PAGE_ECS;
             }
-            else if (frame->data[4] == 0x80)
+            else if ((frame->data[1] == 0x0CU) && (frame->data[2] == 0x08U))
             {
-                g_app_data_model.display_page = DISPLAY_PAGE_WELCOME_DATE_TIME;
+                /* Settings menu */
+                g_app_data_model.display_page = DISPLAY_PAGE_SETTINGS;
             }
             else
             {
                 g_app_data_model.display_page = DISPLAY_PAGE_UNKNOWN;
-            }
-            static e_display_page oldpage = DISPLAY_PAGE_UNKNOWN;
-            if (oldpage != g_app_data_model.display_page)
-            {
-                oldpage = g_app_data_model.display_page;
-                loggerf("page: %d", g_app_data_model.display_page);
             }
         }
         else
@@ -558,17 +562,21 @@ void periodic_logic(void)
     /* Execute the keypad logic */
     keypad_periodic(true);
 static uint8_t send_cardata = 0;
+
     if (keypad_clicked(KEYPAD_BTN_WHEEL_DIAL_DOWN) == KEY_CLICK)
     {
-        strcpy(textbox_tx_state.popup_left_text,   "1234");
-        strcpy(textbox_tx_state.popup_center_text, "5678");
-        strcpy(textbox_tx_state.popup_right_text,  "9123");
         loggerf("DialDown");
     }
     if (keypad_clicked(KEYPAD_BTN_WHEEL_DIAL_UP) == KEY_CLICK)
     {
         send_cardata++;
         loggerf("DialUp");
+    }
+
+    if (g_app_data_model.display_page != DISPLAY_PAGE_RADIO)
+    {
+        /* Disable transmission on another display page */
+        send_cardata = 0;
     }
 
     if (textbox_tx_state.popup_tx_state == TEXTBOX_TX_STATE_IDLE)
@@ -704,6 +712,7 @@ static uint8_t send_cardata = 0;
 
         if ((btn_send_code != 0) && ((btn_send_state == 0)))
         {
+            /* A new code has been keyed in, go on with the transmission */
             btn_send_state = 1;
         }
 

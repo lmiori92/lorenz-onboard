@@ -29,7 +29,7 @@
 
 uint8_t vehicle_speed(uint8_t *data)
 {
-    return data[4];
+    return (uint8_t)(data[4] << 1U);    /* times 2 */
 }
 
 uint8_t vehicle_direction(uint8_t *data)

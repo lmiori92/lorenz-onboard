@@ -57,10 +57,6 @@ static uint8_t gearbox_ratio_to_gear_number(uint16_t gear_ratio, bool reverse)
             retval = 0xFEU;
         }
     }
-    else if (gear_ratio > (Z19DTH_M32_GEARBOX_RATIO_1ST + GEAR_RATIO_ERROR_RANGE))
-    {
-        /* Error out of range*/
-    }
     else if (gear_ratio > Z19DTH_M32_THR_GEARBOX_RATIO_1ST)
     {
         retval = 1U;

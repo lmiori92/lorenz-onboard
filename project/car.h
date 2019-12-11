@@ -24,13 +24,15 @@
  * 6th ratio: 0.61
  * reverse ratio: 3.55
  * final drive ratio: 3.65
+ *
+ * Calculated ratio's error is about +10% at most
  */
-#define Z19DTH_M32_GEARBOX_RATIO_1ST    (382U)
-#define Z19DTH_M32_GEARBOX_RATIO_2ND    (205U)
-#define Z19DTH_M32_GEARBOX_RATIO_3RD    (130U)
-#define Z19DTH_M32_GEARBOX_RATIO_4TH    ( 96U)
-#define Z19DTH_M32_GEARBOX_RATIO_5TH    ( 74U)
-#define Z19DTH_M32_GEARBOX_RATIO_6TH    ( 61U)
+#define Z19DTH_M32_GEARBOX_RATIO_1ST    (427U)  // 420 - 450
+#define Z19DTH_M32_GEARBOX_RATIO_2ND    (235U)  // 225 - 245
+#define Z19DTH_M32_GEARBOX_RATIO_3RD    (148U)  // 140 - 150
+#define Z19DTH_M32_GEARBOX_RATIO_4TH    (107U)  // 100 - 110
+#define Z19DTH_M32_GEARBOX_RATIO_5TH    ( 88U)  // 80 - 85
+#define Z19DTH_M32_GEARBOX_RATIO_6TH    ( 74U)  // 64 - 68
 #define Z19DTH_M32_GEARBOX_RATIO_REV    (355U)
 #define Z19DTH_M32_GEARBOX_RATIO_AXLE   (365U)
 
